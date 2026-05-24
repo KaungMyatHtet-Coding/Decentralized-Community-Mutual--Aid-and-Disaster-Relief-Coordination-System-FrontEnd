@@ -73,7 +73,10 @@ function Dashboard() {
                 community support.
               </p>
             </div>
-            <button className="w-full text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/10 cursor-pointer active:scale-98">
+            <button
+              onClick={() => navigate("/aid-requests")}
+              className="w-full text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/10 cursor-pointer active:scale-98"
+            >
               View Requests
             </button>
           </div>

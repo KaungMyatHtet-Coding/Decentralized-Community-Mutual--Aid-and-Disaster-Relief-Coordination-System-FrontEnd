@@ -16,6 +16,7 @@ import Register from "./pages/Register";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VolunteerList from "./pages/admin/VolunteerList";
 import VolunteerApplications from "./pages/admin/VolunteerApplications";
+import AidRequests from "./pages/AidRequests";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/volunteers" element={<VolunteerList />} />
         <Route path="/admin/applications" element={<VolunteerApplications />} />
+        <Route path="/aid-requests" element={<AidRequests />} />
       </Routes>
     </Router>
   );
