@@ -18,8 +18,23 @@ function DonationApprovals() {
   const fetchDonations = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/donations");
-      setDonations(res.data);
+      const [moneyRes, itemRes] = await Promise.all([
+        api.get("/donations"),
+        api.get("/item-donations"),
+      ]);
+
+      // Item donation ကို money donation နဲ့ တူအောင် normalize လုပ်
+      const normalizedItems = itemRes.data.map((d) => ({
+        ...d,
+        donationType: "ITEMS",
+        amount: null,
+        status: d.status === "PENDING_VOLUNTEER" ? "PENDING" : d.status,
+        donatedAt: d.createdAt,
+        proofImageUrl: d.itemPhotoUrl,
+        _isItemDonation: true, // action မှာ ခွဲသုံးဖို့
+      }));
+
+      setDonations([...moneyRes.data, ...normalizedItems]);
     } catch {
       setError("Failed to load donations.");
     } finally {
@@ -37,31 +52,39 @@ function DonationApprovals() {
     setTimeout(() => setMessage(""), 4000);
   };
 
-  const handleConfirm = async (id) => {
-    setActionLoading(`confirm-${id}`);
-    try {
-      await api.patch(`/donations/${id}/confirm`);
-      showMsg("✅ Donation approved!");
-      fetchDonations();
-    } catch (err) {
-      setError(err.response?.data || "Failed to approve.");
-    } finally {
-      setActionLoading(null);
+const handleConfirm = async (id, isItem) => {
+  setActionLoading(`confirm-${id}`);
+  try {
+    if (isItem) {
+      await api.patch(`/item-donations/${id}/store`); // ✅ item endpoint
+    } else {
+      await api.patch(`/donations/${id}/confirm`); // ✅ money endpoint
     }
-  };
+    showMsg("✅ Donation approved!");
+    fetchDonations();
+  } catch (err) {
+    setError(err.response?.data || "Failed to approve.");
+  } finally {
+    setActionLoading(null);
+  }
+};
 
-  const handleReject = async (id) => {
-    setActionLoading(`reject-${id}`);
-    try {
-      await api.patch(`/donations/${id}/reject`);
-      showMsg("❌ Donation rejected.");
-      fetchDonations();
-    } catch (err) {
-      setError(err.response?.data || "Failed to reject.");
-    } finally {
-      setActionLoading(null);
+const handleReject = async (id, isItem) => {
+  setActionLoading(`reject-${id}`);
+  try {
+    if (isItem) {
+      await api.patch(`/item-donations/${id}/reject`); // ✅ item endpoint
+    } else {
+      await api.patch(`/donations/${id}/reject`); // ✅ money endpoint
     }
-  };
+    showMsg("❌ Donation rejected.");
+    fetchDonations();
+  } catch (err) {
+    setError(err.response?.data || "Failed to reject.");
+  } finally {
+    setActionLoading(null);
+  }
+};
 
   // ── filter ─────────────────────────────────────────────
   const filtered = donations.filter((d) => {
@@ -350,7 +373,9 @@ function DonationApprovals() {
                           <div className="flex gap-2 justify-center">
                             <button
                               disabled={actionLoading !== null}
-                              onClick={() => handleReject(d.id)}
+                              onClick={() =>
+                                handleReject(d.id, d._isItemDonation)
+                              }
                               className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer disabled:opacity-40"
                             >
                               {actionLoading === `reject-${d.id}`
@@ -359,7 +384,9 @@ function DonationApprovals() {
                             </button>
                             <button
                               disabled={actionLoading !== null}
-                              onClick={() => handleConfirm(d.id)}
+                              onClick={() =>
+                                handleConfirm(d.id, d._isItemDonation)
+                              }
                               className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer disabled:opacity-40"
                             >
                               {actionLoading === `confirm-${d.id}`
