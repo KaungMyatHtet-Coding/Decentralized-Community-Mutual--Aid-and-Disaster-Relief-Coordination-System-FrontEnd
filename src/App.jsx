@@ -21,6 +21,8 @@ import VolunteerApply from "./pages/VolunteerApply";
 import AdminAidRequests from "./pages/admin/AdminAidRequests";
 import AdminCampaigns from "./pages/admin/AdminCampaigns";
 import DonationApprovals from "./pages/admin/DonationApprovals";
+import AuditLogs from "./pages/admin/AuditLogs";
+import ManageUsers from "./pages/admin/ManageUsers";
 function App() {
   return (
     <Router>
@@ -47,6 +49,8 @@ function App() {
           path="/admin/donation-approvals"
           element={<DonationApprovals />}
         />
+        <Route path="/admin/audit-logs" element={<AuditLogs />} />
+        <Route path="/admin/users" element={<ManageUsers />} />
       </Routes>
     </Router>
   );

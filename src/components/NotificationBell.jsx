@@ -1,17 +1,23 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api";
 
 function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const navigate = useNavigate();
 
   const unread = notifications.filter((n) => !n.read).length;
 
   const fetchNotifications = async () => {
     try {
       const res = await api.get("/notifications/my");
-      setNotifications(res.data);
+      // ✅ Newest first
+      const sorted = res.data.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      );
+      setNotifications(sorted);
     } catch (err) {
       console.error("Notification fetch failed", err);
     }
@@ -19,12 +25,10 @@ function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    // 30 seconds တစ်ကြိမ် auto refresh
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Outside click ဆိုရင် dropdown ပိတ်
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (ref.current && !ref.current.contains(e.target)) {
@@ -35,6 +39,7 @@ function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ✅ Mark all read
   const markAllRead = async () => {
     try {
       await api.patch("/notifications/mark-all-read");
@@ -44,15 +49,59 @@ function NotificationBell() {
     }
   };
 
-  const markOne = async (id) => {
+  // ✅ Clear all (soft - mark read + hide)
+  const clearAll = async () => {
     try {
-      await api.patch(`/notifications/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-      );
+      await api.patch("/notifications/mark-all-read");
+      setNotifications([]);
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // ✅ Click → mark read + navigate
+  const handleNotificationClick = async (n, userRole) => {
+    // Mark as read
+    if (!n.read) {
+      try {
+        await api.patch(`/notifications/${n.id}/read`);
+        setNotifications((prev) =>
+          prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)),
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // ✅ Navigate based on referenceType + role
+    const isAdmin =
+      userRole === "ROLE_SUPER_ADMIN" || userRole === "ROLE_SUB_ADMIN";
+
+    const routeMap = {
+      DONATION: isAdmin ? "/admin/donation-approvals" : "/my-donations",
+      ITEM_DONATION: isAdmin ? "/admin/item-donations" : "/my-item-donations",
+      AID_REQUEST: isAdmin
+        ? `/admin/aid-requests`
+        : `/aid-requests/${n.referenceId}`,
+      CAMPAIGN: `/campaigns/${n.referenceId}`,
+      VOLUNTEER: isAdmin ? "/admin/volunteers" : "/volunteer/assigned",
+    };
+
+    const route = routeMap[n.referenceType];
+    if (route) {
+      setOpen(false);
+      navigate(route);
+    }
+  };
+
+  // ✅ Time ago
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return "—";
+    const diff = Math.floor((new Date() - new Date(dateStr)) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   };
 
   const typeIcon = (type) => {
@@ -66,6 +115,10 @@ function NotificationBell() {
     };
     return map[type] || "🔔";
   };
+
+  // Get current user role from localStorage
+  // ✅ ဒါနဲ့ အစားထိုး
+  const userRole = localStorage.getItem("role");
 
   return (
     <div className="relative" ref={ref}>
@@ -95,14 +148,25 @@ function NotificationBell() {
                 </span>
               )}
             </span>
-            {unread > 0 && (
-              <button
-                onClick={markAllRead}
-                className="text-[10px] text-teal-400 hover:underline cursor-pointer"
-              >
-                Mark all read
-              </button>
-            )}
+            {/* ✅ Header buttons */}
+            <div className="flex gap-2">
+              {unread > 0 && (
+                <button
+                  onClick={markAllRead}
+                  className="text-[10px] text-teal-400 hover:underline cursor-pointer"
+                >
+                  ✓ All read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="text-[10px] text-rose-400 hover:underline cursor-pointer"
+                >
+                  🗑️ Clear
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -115,7 +179,7 @@ function NotificationBell() {
               notifications.slice(0, 20).map((n) => (
                 <div
                   key={n.id}
-                  onClick={() => markOne(n.id)}
+                  onClick={() => handleNotificationClick(n, userRole)}
                   className={`px-4 py-3 cursor-pointer hover:bg-slate-800/50 transition ${
                     !n.read ? "bg-teal-500/5 border-l-2 border-teal-500" : ""
                   }`}
@@ -129,10 +193,9 @@ function NotificationBell() {
                       <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed line-clamp-2">
                         {n.message}
                       </p>
+                      {/* ✅ Time ago */}
                       <p className="text-[10px] text-gray-600 mt-1 font-mono">
-                        {n.createdAt
-                          ? new Date(n.createdAt).toLocaleString()
-                          : "—"}
+                        {timeAgo(n.createdAt)}
                       </p>
                     </div>
                     {!n.read && (
@@ -148,7 +211,7 @@ function NotificationBell() {
           {notifications.length > 0 && (
             <div className="px-4 py-2 border-t border-slate-800 text-center">
               <span className="text-[10px] text-gray-500 font-mono">
-                {notifications.length} total notifications
+                {notifications.length} total · {unread} unread
               </span>
             </div>
           )}
