@@ -4,7 +4,12 @@ import {
   BrowserRouter as Router,
   Routes,
 } from "react-router-dom";
+import AdminAidRequests from "./pages/admin/AdminAidRequests";
+import AdminCampaigns from "./pages/admin/AdminCampaigns";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AuditLogs from "./pages/admin/AuditLogs";
+import DonationApprovals from "./pages/admin/DonationApprovals";
+import ManageUsers from "./pages/admin/ManageUsers";
 import VolunteerApplications from "./pages/admin/VolunteerApplications";
 import VolunteerList from "./pages/admin/VolunteerList";
 import AidRequests from "./pages/AidRequests";
@@ -15,14 +20,12 @@ import DonationHistory from "./pages/DonationHistory";
 import Login from "./pages/Login";
 import ManageDonations from "./pages/ManageDonations";
 import ManagePosts from "./pages/ManagePosts"; // path ကိုယ့် project structure အတိုင်း ပြင်ပါ
+import MyItemDonations from "./pages/MyItemDonations";
 import NewsFeed from "./pages/NewsFeed"; // path ကိုယ့် project structure အတိုင်း ပြင်ပါ
 import Register from "./pages/Register";
 import VolunteerApply from "./pages/VolunteerApply";
-import AdminAidRequests from "./pages/admin/AdminAidRequests";
-import AdminCampaigns from "./pages/admin/AdminCampaigns";
-import DonationApprovals from "./pages/admin/DonationApprovals";
-import AuditLogs from "./pages/admin/AuditLogs";
-import ManageUsers from "./pages/admin/ManageUsers";
+import VolunteerAssignments from "./pages/VolunteerAssignments";
+import VolunteerAssignmentsList from "./pages/VolunteerAssignmentsList";
 function App() {
   return (
     <Router>
@@ -51,6 +54,16 @@ function App() {
         />
         <Route path="/admin/audit-logs" element={<AuditLogs />} />
         <Route path="/admin/users" element={<ManageUsers />} />
+        <Route path="/my-item-donations" element={<MyItemDonations />} />
+        // ဒါ ထည့်ဖို့ လိုတယ် ✅
+        <Route
+          path="/volunteer/assignments"
+          element={<VolunteerAssignmentsList />}
+        />
+        <Route
+          path="/volunteer/assignments/:id"
+          element={<VolunteerAssignments />}
+        />
       </Routes>
     </Router>
   );

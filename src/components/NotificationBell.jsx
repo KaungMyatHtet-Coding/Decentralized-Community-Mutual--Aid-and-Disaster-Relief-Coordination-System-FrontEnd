@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
@@ -61,7 +61,6 @@ function NotificationBell() {
 
   // ✅ Click → mark read + navigate
   const handleNotificationClick = async (n, userRole) => {
-    // Mark as read
     if (!n.read) {
       try {
         await api.patch(`/notifications/${n.id}/read`);
@@ -73,13 +72,17 @@ function NotificationBell() {
       }
     }
 
-    // ✅ Navigate based on referenceType + role
     const isAdmin =
       userRole === "ROLE_SUPER_ADMIN" || userRole === "ROLE_SUB_ADMIN";
+    const isVolunteer = userRole === "ROLE_VOLUNTEER"; // ← NEW
 
     const routeMap = {
       DONATION: isAdmin ? "/admin/donation-approvals" : "/my-donations",
-      ITEM_DONATION: isAdmin ? "/admin/item-donations" : "/my-item-donations",
+      ITEM_DONATION: isAdmin
+        ? "/admin/item-donations"
+        : isVolunteer
+          ? `/volunteer/assignments/${n.referenceId}` // ← CHANGED
+          : "/my-item-donations",
       AID_REQUEST: isAdmin
         ? `/admin/aid-requests`
         : `/aid-requests/${n.referenceId}`,
