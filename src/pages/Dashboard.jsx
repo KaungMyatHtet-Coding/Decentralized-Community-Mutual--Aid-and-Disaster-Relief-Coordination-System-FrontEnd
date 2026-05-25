@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import NotificationBell from "../components/NotificationBell";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ function Dashboard() {
         </h1>
         <div className="flex items-center gap-4">
           {/* User Role Badge လေး ပြပေးထားမယ် */}
+          <NotificationBell />
           <span className="text-[10px] bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-full font-mono uppercase tracking-wider">
             {role.replace("ROLE_", "")}
           </span>
@@ -112,7 +114,11 @@ function Dashboard() {
                 on-field aid activities.
               </p>
             </div>
-            <button className="w-full text-sm bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-blue-500/10 cursor-pointer active:scale-98">
+            // ✅ ပြင်
+            <button
+              onClick={() => navigate("/volunteer-apply")}
+              className="w-full text-sm bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-blue-500/10 cursor-pointer active:scale-98"
+            >
               Apply Now
             </button>
           </div>

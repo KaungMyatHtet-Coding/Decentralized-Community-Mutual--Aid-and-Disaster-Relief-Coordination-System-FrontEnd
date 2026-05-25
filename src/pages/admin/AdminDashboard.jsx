@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
-
+import NotificationBell from "../../components/NotificationBell";
 function AdminDashboard() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
@@ -77,6 +77,7 @@ function AdminDashboard() {
           <span className="text-[10px] text-slate-500 font-mono hidden sm:block">
             Hnaung Kyoe Platform
           </span>
+          <NotificationBell />
         </div>
         <div className="flex items-center gap-4">
           <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-full font-mono uppercase tracking-wider">
@@ -253,6 +254,29 @@ function AdminDashboard() {
               className="w-full text-sm bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition cursor-pointer"
             >
               Manage Donations
+            </button>
+          </div>
+
+          <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-4 hover:border-slate-700 transition flex flex-col justify-between">
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-teal-400">
+                💳 Donation Approvals
+              </h3>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                Approve or reject pending donations. View full donation history
+                with export.
+              </p>
+              {stats?.pendingDonations > 0 && (
+                <span className="inline-block text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-mono animate-pulse">
+                  {stats.pendingDonations} pending
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => navigate("/admin/donation-approvals")}
+              className="w-full text-sm bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-2.5 rounded-xl transition cursor-pointer"
+            >
+              Review Donations
             </button>
           </div>
 
