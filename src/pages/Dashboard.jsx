@@ -131,6 +131,16 @@ function Dashboard() {
         </h1>
         <div className="flex items-center gap-4">
           <NotificationBell />
+
+
+          <button
+            onClick={() => {const isComplete =
+              localStorage.getItem("profileCompleted") === "true";
+            navigate(isComplete ? "/profile/view" : "/profile");}}
+            className="text-sm text-slate-400 hover:text-white transition cursor-pointer"
+          >
+            👤 Profile
+          </button>
           <span className="text-[10px] bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2.5 py-1 rounded-full font-mono uppercase tracking-wider">
             {role.replace("ROLE_", "")}
           </span>

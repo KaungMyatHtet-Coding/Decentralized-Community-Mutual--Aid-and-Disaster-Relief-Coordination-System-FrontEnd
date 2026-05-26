@@ -20,12 +20,13 @@ function Login() {
       const response = await api.post("/auth/login", credentials);
 
       // ✨ userId ပါ ထုတ်ယူလိုက်တာ
-      const { token, role, username, userId } = response.data;
+      const { token, role, username, userId ,profileCompleted} = response.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("username", username);
       localStorage.setItem("userId", userId); // ✨ သိမ်းလိုက်တာ — ဒါမှ DonateForm မှာ သုံးလို့ရမယ်
+      localStorage.setItem("profileCompleted", profileCompleted);
 
       setTimeout(() => {
         if (role === "ROLE_SUPER_ADMIN" || role === "ROLE_SUB_ADMIN") {

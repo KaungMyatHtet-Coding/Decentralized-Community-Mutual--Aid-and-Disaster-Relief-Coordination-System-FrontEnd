@@ -26,6 +26,8 @@ import Register from "./pages/Register";
 import VolunteerApply from "./pages/VolunteerApply";
 import VolunteerAssignments from "./pages/VolunteerAssignments";
 import VolunteerAssignmentsList from "./pages/VolunteerAssignmentsList";
+import ProfilePage from "./pages/ProfilePage";
+import ProfileViewPage from "./pages/ProfileViewPage"
 function App() {
   return (
     <Router>
@@ -64,6 +66,8 @@ function App() {
           path="/volunteer/assignments/:id"
           element={<VolunteerAssignments />}
         />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/view" element={<ProfileViewPage />} />
       </Routes>
     </Router>
   );
