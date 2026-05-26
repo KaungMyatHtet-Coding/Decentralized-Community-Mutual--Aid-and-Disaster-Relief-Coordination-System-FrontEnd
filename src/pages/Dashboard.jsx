@@ -264,7 +264,11 @@ function Dashboard() {
               )}
             </div>
             <button
-              onClick={() => navigate("/volunteer/assignments")}
+              onClick={() =>
+                role === "ROLE_VOLUNTEER"
+                  ? navigate("/volunteer/assignments")
+                  : navigate("/volunteer-apply")
+              }
               className="w-full text-sm bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold py-2.5 rounded-xl transition cursor-pointer"
             >
               {role === "ROLE_VOLUNTEER" ? "View Assignments" : "Apply Now"}
