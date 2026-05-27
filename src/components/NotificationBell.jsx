@@ -78,7 +78,7 @@ function NotificationBell() {
     const isVolunteer = userRole === "ROLE_VOLUNTEER";
 
     // 🎯 Admin ဖြစ်ခဲ့ရင် Noti ရဲ့ အကြောင်းအရာအလိုက် လမ်းကြောင်းကို မှန်ကန်အောင် ခွဲခြားခြင်း
-    let adminItemDonationRoute = "/admin/item-donations"; // 👈 Default: အလှူရှင် အသစ်လှူဒါန်းစဉ် သွားမည့် Review Page
+    let adminItemDonationRoute = "/admin/donation-approvals"; // 👈 Default: အလှူရှင် အသစ်လှူဒါန်းစဉ် သွားမည့် Review Page
 
     if (n.title) {
       const titleLower = n.title.toLowerCase();

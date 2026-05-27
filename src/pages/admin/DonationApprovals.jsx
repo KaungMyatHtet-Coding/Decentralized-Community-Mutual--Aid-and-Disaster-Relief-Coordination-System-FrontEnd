@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 function DonationApprovals() {
   const navigate = useNavigate();
   const [donations, setDonations] = useState([]);
+  const [volunteers, setVolunteers] = useState([]); // 💡 Volunteer စာရင်းသိမ်းရန်
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -14,29 +17,33 @@ function DonationApprovals() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [exporting, setExporting] = useState(false);
 
-  // ── fetch ──────────────────────────────────────────────
+  // ── fetch Data ──────────────────────────────────────────
   const fetchDonations = async () => {
     setLoading(true);
     try {
-      const [moneyRes, itemRes] = await Promise.all([
+      // 💡 API သုံးခုလုံးကို တစ်ပြိုင်နက် ခေါ်ယူလိုက်ပါတယ် (Money, Items, Volunteers)
+      const [moneyRes, itemRes, volunteersRes] = await Promise.all([
         api.get("/donations"),
         api.get("/item-donations"),
+        api.get("/users/volunteers"),
       ]);
 
-      // Item donation ကို money donation နဲ့ တူအောင် normalize လုပ်
+      // Item donation ရဲ့ status တွေကို Backend အတိုင်း ညှိယူခြင်း
       const normalizedItems = itemRes.data.map((d) => ({
         ...d,
         donationType: "ITEMS",
         amount: null,
-        status: d.status === "PENDING_VOLUNTEER" ? "PENDING" : d.status,
+        // 🎯 တကယ်လို့ status က PENDING_ADMIN ဖြစ်နေရင် PENDING အနေနဲ့ပြမယ်
+        status: d.status === "PENDING_ADMIN" ? "PENDING" : d.status,
         donatedAt: d.createdAt,
         proofImageUrl: d.itemPhotoUrl,
-        _isItemDonation: true, // action မှာ ခွဲသုံးဖို့
+        _isItemDonation: true, // 💡 Item ဟုတ်မဟုတ် စစ်ထုတ်ရန် Flag
       }));
 
       setDonations([...moneyRes.data, ...normalizedItems]);
+      setVolunteers(volunteersRes.data || []);
     } catch {
-      setError("Failed to load donations.");
+      setError("Failed to load donations and volunteers.");
     } finally {
       setLoading(false);
     }
@@ -46,130 +53,138 @@ function DonationApprovals() {
     fetchDonations();
   }, []);
 
-  // ── actions ────────────────────────────────────────────
   const showMsg = (msg) => {
     setMessage(msg);
     setTimeout(() => setMessage(""), 4000);
   };
 
+  // ── အတည်ပြုခြင်းအပိုင်း (Approve & Assign) ───────────────────
   const handleConfirm = async (id, isItem) => {
     setActionLoading(`confirm-${id}`);
     try {
       if (isItem) {
-        await api.patch(`/item-donations/${id}/store`); // ✅ item endpoint
+        // 💡 ITEM DONATION ဖြစ်ခဲ့ရင် Volunteer အရင် ရွေးခိုင်းမယ်
+        const volunteerList = volunteers
+          .map(
+            (v) =>
+              `${v.id} - ${v.fullName || v.username} (${v.township || "No Township"})`
+          )
+          .join("\n");
+
+        const volunteerId = prompt(
+          `Choose Volunteer ID to assign for Item Donation #${id}:\n\n${volunteerList}\n\nEnter Volunteer ID:`
+        );
+
+        if (!volunteerId) {
+          setActionLoading(null);
+          return; // Cancel နှိပ်ရင် ဘာမှမလုပ်ဘူး
+        }
+
+        // 🎯 ပထမဖိုင်ထဲက Endpoint အတိုင်း Volunteer ID ပါ တွဲပို့ပေးလိုက်ပါတယ်
+        await api.patch(`/item-donations/${id}/approve?volunteerId=${volunteerId}`);
+        showMsg("✅ Item Donation Approved and Volunteer Assigned!");
       } else {
-        await api.patch(`/donations/${id}/confirm`); // ✅ money endpoint
+        // 💰 MONEY DONATION ဖြစ်ခဲ့ရင် ပုံမှန်အတိုင်း တိုက်ရိုက် Approve လုပ်မယ်
+        await api.patch(`/donations/${id}/confirm`);
+        showMsg("✅ Money Donation Approved!");
       }
-      showMsg("✅ Donation approved!");
       fetchDonations();
     } catch (err) {
-      setError(err.response?.data || "Failed to approve.");
+      setError(err.response?.data || "Failed to approve donation.");
     } finally {
       setActionLoading(null);
     }
   };
 
+  // ── ငြင်းပယ်ခြင်းအပိုင်း (Reject) ─────────────────────────────
   const handleReject = async (id, isItem) => {
     setActionLoading(`reject-${id}`);
     try {
       if (isItem) {
-        await api.patch(`/item-donations/${id}/reject`); // ✅ item endpoint
+        // 💡 Item ဖြစ်ရင် အကြောင်းပြချက် မေးပြီး ပထမဖိုင်က admin-reject သုံးမယ်
+        const reason = prompt("Please enter reject reason for this item:");
+        if (!reason) {
+          setActionLoading(null);
+          return;
+        }
+        await api.patch(`/item-donations/${id}/admin-reject`, { reason });
       } else {
-        await api.patch(`/donations/${id}/reject`); // ✅ money endpoint
+        // 💰 Money ဖြစ်ရင် ပုံမှန်အတိုင်း Reject လုပ်မယ်
+        await api.patch(`/donations/${id}/reject`);
       }
-      showMsg("❌ Donation rejected.");
+      showMsg("❌ Donation rejected successfully.");
       fetchDonations();
     } catch (err) {
-      setError(err.response?.data || "Failed to reject.");
+      setError(err.response?.data || "Failed to reject donation.");
     } finally {
       setActionLoading(null);
     }
   };
 
-  // ── filter ─────────────────────────────────────────────
+  // ── Filter & Search Logic ──────────────────────────────
   const filtered = donations.filter((d) => {
+    
     const tabMatch = tab === "PENDING" ? d.status === "PENDING" : true;
     const statusMatch = statusFilter === "ALL" || d.status === statusFilter;
     const searchMatch =
       search === "" ||
       d.donor?.username?.toLowerCase().includes(search.toLowerCase()) ||
-      d.campaign?.title?.toLowerCase().includes(search.toLowerCase());
+      d.campaign?.title?.toLowerCase().includes(search.toLowerCase()) ||
+      (d.itemName && d.itemName.toLowerCase().includes(search.toLowerCase()));
     return tabMatch && statusMatch && searchMatch;
   });
 
   const pendingCount = donations.filter((d) => d.status === "PENDING").length;
 
-  // ── PDF Export ─────────────────────────────────────────
-  const exportPDF = async () => {
+
+const exportPDF = async () => {
     setExporting(true);
-    try {
-      // Build HTML table for PDF
-      const rows = filtered
-        .map(
-          (d) => `
-        <tr>
-          <td>${d.id}</td>
-          <td>${d.donor?.username || "Anonymous"}</td>
-          <td>${d.campaign?.title || "—"}</td>
-          <td>${d.donationType}</td>
-          <td>${d.donationType === "MONEY" ? Number(d.amount).toLocaleString() + " MMK" : `${d.itemName} (${d.quantity} ${d.unit})`}</td>
-          <td>${d.donatedAt ? new Date(d.donatedAt).toLocaleDateString() : "—"}</td>
-          <td>${d.status}</td>
-        </tr>
-      `,
-        )
-        .join("");
 
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8" />
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 12px; color: #222; }
-            h1 { color: #0f766e; font-size: 18px; margin-bottom: 4px; }
-            p { color: #666; font-size: 11px; margin-bottom: 16px; }
-            table { width: 100%; border-collapse: collapse; }
-            th { background: #0f766e; color: white; padding: 8px; text-align: left; font-size: 11px; }
-            td { padding: 7px 8px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
-            tr:nth-child(even) td { background: #f9fafb; }
-            .CONFIRMED { color: #059669; font-weight: bold; }
-            .REJECTED  { color: #dc2626; font-weight: bold; }
-            .PENDING   { color: #d97706; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h1>💰 Donation History Report</h1>
-          <p>Generated: ${new Date().toLocaleString()} · Total: ${filtered.length} records</p>
-          <table>
-            <thead>
-              <tr>
-                <th>#ID</th><th>Donor</th><th>Campaign</th>
-                <th>Type</th><th>Contribution</th><th>Date</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </body>
-        </html>
-      `;
+    // 1. PDF Instance အသစ်ဖန်တီးခြင်း
+    const doc = new jsPDF();
 
-      const win = window.open("", "_blank");
-      win.document.write(html);
-      win.document.close();
-      win.focus();
-      setTimeout(() => {
-        win.print();
-      }, 500);
-    } finally {
-      setExporting(false);
-    }
+    // 2. ခေါင်းစဉ်နှင့် အချက်အလက်များ
+    doc.setFontSize(18);
+    doc.text("Donation History Report", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()} | Total: ${filtered.length} records`, 14, 28);
+
+    // 3. Table Column များ
+    const tableColumn = ["#ID", "Donor", "Campaign", "Type", "Contribution", "Date", "Status"];
+
+    // 4. Table Row များ (ညီလေးရဲ့ logic အတိုင်း)
+    const tableRows = filtered.map(d => [
+      d.id,
+      d.donor?.username || "Anonymous",
+      d.campaign?.title || "—",
+      d.donationType,
+      d.donationType === "MONEY"
+        ? Number(d.amount).toLocaleString() + " MMK"
+        : `${d.itemName} (${d.quantity} ${d.unit})`,
+      d.donatedAt ? new Date(d.donatedAt).toLocaleDateString() : "—",
+      d.status
+    ]);
+
+    // 5. AutoTable သုံးပြီး PDF ထဲ ထည့်ခြင်း
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 35,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [15, 118, 110] }, // ညီလေးရဲ့ အရောင် (emerald-800)
+    });
+
+    // 6. တိုက်ရိုက် Download ချခြင်း
+    doc.save("Donation_History_Report.pdf");
+
+    setExporting(false);
   };
 
-  // ── status badge ───────────────────────────────────────
   const statusBadge = (status) => {
     switch (status) {
       case "CONFIRMED":
+      case "APPROVED":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
       case "REJECTED":
         return "bg-rose-500/10 text-rose-400 border-rose-500/20";
@@ -185,7 +200,7 @@ function DonationApprovals() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-800 pb-5">
           <div>
             <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-              💳 Donation Approvals
+              💳 Donation Management Center
             </h1>
             <p className="text-xs text-gray-400 mt-1">
               {pendingCount > 0 && (
@@ -193,7 +208,7 @@ function DonationApprovals() {
                   {pendingCount} pending ·{" "}
                 </span>
               )}
-              {donations.length} total donations
+              {donations.length} total entries
             </p>
           </div>
           <div className="flex gap-3">
@@ -208,26 +223,21 @@ function DonationApprovals() {
               onClick={() => navigate("/admin/dashboard")}
               className="bg-slate-900 hover:bg-slate-800 text-xs border border-slate-800 px-4 py-2 rounded-xl transition cursor-pointer"
             >
-              ← Back
+              ← Dashboard
             </button>
           </div>
         </div>
 
-        {/* Messages */}
+        {/* Alerts */}
         {message && (
           <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-xl text-sm text-center">
             {message}
           </div>
         )}
         {error && (
-          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-xl text-sm text-center">
-            {error}
-            <button
-              onClick={() => setError("")}
-              className="ml-2 underline cursor-pointer"
-            >
-              ✕
-            </button>
+          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded-xl text-sm text-center flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="ml-2 underline font-bold cursor-pointer">✕</button>
           </div>
         )}
 
@@ -238,7 +248,7 @@ function DonationApprovals() {
               key: "PENDING",
               label: `⏳ Pending Review${pendingCount > 0 ? ` (${pendingCount})` : ""}`,
             },
-            { key: "ALL", label: "📋 All Donations" },
+            { key: "ALL", label: "📋 All History" },
           ].map((t) => (
             <button
               key={t.key}
@@ -257,16 +267,16 @@ function DonationApprovals() {
           ))}
         </div>
 
-        {/* Search + Filter (ALL tab only) */}
-        {tab === "ALL" && (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              placeholder="Search by donor or campaign..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
-            />
+        {/* Search Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            placeholder="Search by donor, campaign, or item name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+          />
+          {tab === "ALL" && (
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -277,21 +287,17 @@ function DonationApprovals() {
               <option value="CONFIRMED">CONFIRMED</option>
               <option value="REJECTED">REJECTED</option>
             </select>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Table */}
+        {/* Data Table */}
         {loading ? (
           <div className="text-center py-16 text-emerald-400 animate-pulse text-sm">
-            Loading donations...
+            Synchronizing records...
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 bg-slate-900/20 border border-slate-800 border-dashed rounded-2xl">
-            <p className="text-gray-400 text-sm">
-              {tab === "PENDING"
-                ? "🎉 No pending donations! All caught up."
-                : "No donations found."}
-            </p>
+            <p className="text-gray-400 text-sm">No records matching criteria.</p>
           </div>
         ) : (
           <div className="bg-slate-900/30 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
@@ -299,15 +305,15 @@ function DonationApprovals() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 bg-slate-900/60 text-[10px] uppercase font-mono tracking-wider text-gray-400">
-                    <th className="p-4">#</th>
+                    <th className="p-4">#ID</th>
                     <th className="p-4">Donor</th>
                     <th className="p-4">Campaign</th>
                     <th className="p-4">Type</th>
-                    <th className="p-4">Contribution</th>
-                    <th className="p-4">Receipt</th>
-                    <th className="p-4">Date</th>
+                    <th className="p-4">Contribution Details</th>
+                    <th className="p-4">Evidence</th>
+                    <th className="p-4">Submitted Date</th>
                     <th className="p-4 text-center">Status</th>
-                    <th className="p-4 text-center">Actions</th>
+                    <th className="p-4 text-center">Action Panel</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 text-xs text-gray-300">
@@ -321,7 +327,7 @@ function DonationApprovals() {
                         {d.donor?.username || "Anonymous"}
                       </td>
                       <td className="p-4 max-w-[160px] truncate text-gray-300">
-                        {d.campaign?.title || `#${d.campaign?.id}`}
+                        {d.campaign?.title || `Campaign #${d.campaignId || 'General'}`}
                       </td>
                       <td className="p-4">
                         <span
@@ -340,8 +346,8 @@ function DonationApprovals() {
                             {Number(d.amount).toLocaleString()} MMK
                           </span>
                         ) : (
-                          <span>
-                            {d.itemName} ({d.quantity} {d.unit})
+                          <span className="text-blue-300 font-medium">
+                            📦 {d.itemName} ({d.quantity} {d.unit})
                           </span>
                         )}
                       </td>
@@ -353,16 +359,14 @@ function DonationApprovals() {
                             rel="noreferrer"
                             className="text-teal-400 hover:underline font-mono text-[11px]"
                           >
-                            🖼️ View
+                            🖼️ View Attachment
                           </a>
                         ) : (
                           <span className="text-gray-600">—</span>
                         )}
                       </td>
                       <td className="p-4 text-gray-400 font-mono">
-                        {d.donatedAt
-                          ? new Date(d.donatedAt).toLocaleDateString()
-                          : "—"}
+                        {d.donatedAt ? new Date(d.donatedAt).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-4 text-center">
                         <span
@@ -376,31 +380,25 @@ function DonationApprovals() {
                           <div className="flex gap-2 justify-center">
                             <button
                               disabled={actionLoading !== null}
-                              onClick={() =>
-                                handleReject(d.id, d._isItemDonation)
-                              }
+                              onClick={() => handleReject(d.id, d._isItemDonation)}
                               className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer disabled:opacity-40"
                             >
-                              {actionLoading === `reject-${d.id}`
-                                ? "..."
-                                : "❌ Reject"}
+                              {actionLoading === `reject-${d.id}` ? "..." : "❌ Reject"}
                             </button>
                             <button
                               disabled={actionLoading !== null}
-                              onClick={() =>
-                                handleConfirm(d.id, d._isItemDonation)
-                              }
+                              onClick={() => handleConfirm(d.id, d._isItemDonation)}
                               className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer disabled:opacity-40"
                             >
                               {actionLoading === `confirm-${d.id}`
                                 ? "..."
+                                : d._isItemDonation
+                                ? "✔ Assign & Approve"
                                 : "✔ Approve"}
                             </button>
                           </div>
                         ) : (
-                          <span className="text-gray-600 text-[10px] text-center block">
-                            —
-                          </span>
+                          <span className="text-gray-600 text-[10px] text-center block">—</span>
                         )}
                       </td>
                     </tr>
@@ -409,7 +407,7 @@ function DonationApprovals() {
               </table>
             </div>
             <div className="px-4 py-3 border-t border-slate-800 text-[10px] text-gray-500 font-mono">
-              Showing {filtered.length} of {donations.length} records
+              Showing {filtered.length} of {donations.length} total entries
             </div>
           </div>
         )}
