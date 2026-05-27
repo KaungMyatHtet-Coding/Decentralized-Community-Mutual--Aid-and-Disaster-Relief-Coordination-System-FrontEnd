@@ -52,39 +52,39 @@ function DonationApprovals() {
     setTimeout(() => setMessage(""), 4000);
   };
 
-const handleConfirm = async (id, isItem) => {
-  setActionLoading(`confirm-${id}`);
-  try {
-    if (isItem) {
-      await api.patch(`/item-donations/${id}/store`); // ✅ item endpoint
-    } else {
-      await api.patch(`/donations/${id}/confirm`); // ✅ money endpoint
+  const handleConfirm = async (id, isItem) => {
+    setActionLoading(`confirm-${id}`);
+    try {
+      if (isItem) {
+        await api.patch(`/item-donations/${id}/store`); // ✅ item endpoint
+      } else {
+        await api.patch(`/donations/${id}/confirm`); // ✅ money endpoint
+      }
+      showMsg("✅ Donation approved!");
+      fetchDonations();
+    } catch (err) {
+      setError(err.response?.data || "Failed to approve.");
+    } finally {
+      setActionLoading(null);
     }
-    showMsg("✅ Donation approved!");
-    fetchDonations();
-  } catch (err) {
-    setError(err.response?.data || "Failed to approve.");
-  } finally {
-    setActionLoading(null);
-  }
-};
+  };
 
-const handleReject = async (id, isItem) => {
-  setActionLoading(`reject-${id}`);
-  try {
-    if (isItem) {
-      await api.patch(`/item-donations/${id}/reject`); // ✅ item endpoint
-    } else {
-      await api.patch(`/donations/${id}/reject`); // ✅ money endpoint
+  const handleReject = async (id, isItem) => {
+    setActionLoading(`reject-${id}`);
+    try {
+      if (isItem) {
+        await api.patch(`/item-donations/${id}/reject`); // ✅ item endpoint
+      } else {
+        await api.patch(`/donations/${id}/reject`); // ✅ money endpoint
+      }
+      showMsg("❌ Donation rejected.");
+      fetchDonations();
+    } catch (err) {
+      setError(err.response?.data || "Failed to reject.");
+    } finally {
+      setActionLoading(null);
     }
-    showMsg("❌ Donation rejected.");
-    fetchDonations();
-  } catch (err) {
-    setError(err.response?.data || "Failed to reject.");
-  } finally {
-    setActionLoading(null);
-  }
-};
+  };
 
   // ── filter ─────────────────────────────────────────────
   const filtered = donations.filter((d) => {
@@ -312,7 +312,10 @@ const handleReject = async (id, isItem) => {
                 </thead>
                 <tbody className="divide-y divide-slate-800/50 text-xs text-gray-300">
                   {filtered.map((d) => (
-                    <tr key={d.id} className="hover:bg-slate-900/20 transition">
+                    <tr
+                      key={d._isItemDonation ? `item-${d.id}` : `money-${d.id}`}
+                      className="hover:bg-slate-900/20 transition"
+                    >
                       <td className="p-4 font-mono text-gray-500">#{d.id}</td>
                       <td className="p-4 font-bold text-white">
                         {d.donor?.username || "Anonymous"}

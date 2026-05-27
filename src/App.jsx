@@ -28,6 +28,11 @@ import VolunteerAssignments from "./pages/VolunteerAssignments";
 import VolunteerAssignmentsList from "./pages/VolunteerAssignmentsList";
 import ProfilePage from "./pages/ProfilePage";
 import ProfileViewPage from "./pages/ProfileViewPage"
+import VolunteerHistory from "./pages/VolunteerHistory";
+import AdminDonationApprovals from "./pages/AdminDonationApprovals";
+import StorePage from "./pages/admin/StorePage"
+// ... အပေါ်က Import တွေ အားလုံးကို မူလအတိုင်း ထားပါ ...
+
 function App() {
   return (
     <Router>
@@ -50,14 +55,19 @@ function App() {
         <Route path="/volunteer-apply" element={<VolunteerApply />} />
         <Route path="/admin/aid-requests" element={<AdminAidRequests />} />
         <Route path="/admin/campaigns" element={<AdminCampaigns />} />
+        <Route path="/admin/audit-logs" element={<AuditLogs />} />
+        <Route path="/admin/users" element={<ManageUsers />} />
+        <Route path="/my-item-donations" element={<MyItemDonations />} />
+        {/* 💡 (၁) မူလ DonationApprovals ကို ဒီလမ်းကြောင်းအတိုင်း ထားချင်ထားပါ */}
         <Route
           path="/admin/donation-approvals"
           element={<DonationApprovals />}
         />
-        <Route path="/admin/audit-logs" element={<AuditLogs />} />
-        <Route path="/admin/users" element={<ManageUsers />} />
-        <Route path="/my-item-donations" element={<MyItemDonations />} />
-        // ဒါ ထည့်ဖို့ လိုတယ် ✅
+        {/* 💡 (၂) Notification က လှမ်းခေါ်တဲ့ /admin/item-donations အတွက် လမ်းကြောင်းအသစ် တိုးပေးလိုက်ပါ */}
+        <Route
+          path="/admin/item-donations"
+          element={<AdminDonationApprovals />}
+        />
         <Route
           path="/volunteer/assignments"
           element={<VolunteerAssignmentsList />}
@@ -68,9 +78,14 @@ function App() {
         />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/view" element={<ProfileViewPage />} />
+        <Route path="/volunteer/history" element={<VolunteerHistory />} />
+        // ညီလေးရဲ့ Admin Router Area ထဲမှာ သွားထည့်ပေးပါ
+        <Route path="/admin/store" element={<StorePage />} />
       </Routes>
     </Router>
   );
 }
+
+
 
 export default App;

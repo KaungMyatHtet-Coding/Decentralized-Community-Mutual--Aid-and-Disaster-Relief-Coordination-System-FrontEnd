@@ -105,7 +105,6 @@ function AdminDashboard() {
             Admin Control Panel — Hnaung Kyoe Platform
           </p>
         </div>
-
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
@@ -145,7 +144,6 @@ function AdminDashboard() {
             icon="🤝"
           />
         </div>
-
         {/* Main Action Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Manage Campaigns */}
@@ -300,6 +298,25 @@ function AdminDashboard() {
           </div>
         </div>
 
+        <div className="bg-slate-900/40 border border-slate-800/80 p-6 rounded-2xl space-y-4 hover:border-slate-700 transition flex flex-col justify-between">
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold text-rose-400">
+              Store / Inventory
+            </h3>
+          </div>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            Volunteer များ ကောက်ခံလာသော ပစ္စည်းများကို စစ်ဆေး၍
+            ဂိုဒေါင်အတွင်းသို့ စာရင်းသွင်းရန်။
+          </p>
+          <button
+            onClick={() => navigate("/admin/store")} // 👈 Page အသစ်သို့ လမ်းညွှန်မည်
+            className="w-full text-sm bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold py-2.5 rounded-xl transition cursor-pointer"
+          >
+            Go to Store
+          </button>
+        </div>
+
+        
         {/* SUPER_ADMIN Only — Audit Logs */}
         {role === "ROLE_SUPER_ADMIN" && (
           <div className="bg-slate-900/30 border border-slate-700/50 border-dashed p-5 rounded-2xl">

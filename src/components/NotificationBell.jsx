@@ -39,64 +39,90 @@ function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ✅ Mark all read
+  // ✅ Mark all read ပြုပြင်ရန်
   const markAllRead = async () => {
     try {
-      await api.patch("/notifications/mark-all-read");
+      await api.put("/notifications/mark-all-read"); // 👈 api.patch ကို api.put သို့ ပြောင်းလဲခြင်း
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ Clear all (soft - mark read + hide)
+  // ✅ Clear all ပြုပြင်ရန်
   const clearAll = async () => {
     try {
-      await api.patch("/notifications/mark-all-read");
+      await api.put("/notifications/mark-all-read"); // 👈 api.patch ကို api.put သို့ ပြောင်းလဲခြင်း
       setNotifications([]);
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ Click → mark read + navigate
+  // ✅ Notification တစ်ခုချင်းစီ နှိပ်လိုက်သည့်အခါ Mark Read လုပ်ပြီး လမ်းကြောင်းမှန်သို့ ပို့ပေးရန်
   const handleNotificationClick = async (n, userRole) => {
     if (!n.read) {
       try {
-        await api.patch(`/notifications/${n.id}/read`);
+        await api.put(`/notifications/${n.id}/read`); // 👈 ပိုမိုစိတ်ချရသော PUT Method သို့ ပြောင်းလဲခြင်း
         setNotifications((prev) =>
           prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)),
         );
       } catch (err) {
-        console.error(err);
+        console.error("Error marking notification as read:", err);
       }
     }
 
+    // 👤 Role စစ်ဆေးခြင်း
     const isAdmin =
       userRole === "ROLE_SUPER_ADMIN" || userRole === "ROLE_SUB_ADMIN";
-    const isVolunteer = userRole === "ROLE_VOLUNTEER"; // ← NEW
+    const isVolunteer = userRole === "ROLE_VOLUNTEER";
 
+    // 🎯 Admin ဖြစ်ခဲ့ရင် Noti ရဲ့ အကြောင်းအရာအလိုက် လမ်းကြောင်းကို မှန်ကန်အောင် ခွဲခြားခြင်း
+    let adminItemDonationRoute = "/admin/item-donations"; // 👈 Default: အလှူရှင် အသစ်လှူဒါန်းစဉ် သွားမည့် Review Page
+
+    if (n.title) {
+      const titleLower = n.title.toLowerCase();
+      const messageLower = n.message ? n.message.toLowerCase() : "";
+
+      // 💡 Volunteer က ပစ္စည်းသွားကောက်ပြီး "Received" သို့မဟုတ် "Accepted" လုပ်လိုက်တဲ့ Noti ဆိုရင်...
+      if (
+        titleLower.includes("collected") ||
+        titleLower.includes("received") ||
+        titleLower.includes("accepted") ||
+        messageLower.includes("ကောက်ခံရရှိ") ||
+        messageLower.includes("လက်ခံလိုက်ပါပြီ")
+      ) {
+        adminItemDonationRoute = "/admin/store"; // 🏬 ဂိုဒေါင်သွင်းရန် စိစစ်မည့် စာမျက်နှာသို့ လမ်းကြောင်းလွှဲမည်
+      }
+    }
+
+    // 🔄 အဆင့်မြှင့်တင်ထားသော လမ်းကြောင်းပြမြေပုံ (Route Map)
     const routeMap = {
       DONATION: isAdmin ? "/admin/donation-approvals" : "/my-donations",
+
+      // 🏬 ITEM_DONATION လမ်းကြောင်းကို Intelligent ဖြစ်အောင် Update လုပ်ထားပါသည်
       ITEM_DONATION: isAdmin
-        ? "/admin/item-donations"
+        ? adminItemDonationRoute // 👈 အပေါ်က စစ်ထုတ်ချက်အရ လမ်းကြောင်းမှန်အတိုင်း သွားပါလိမ့်မည်
         : isVolunteer
-          ? `/volunteer/assignments/${n.referenceId}` // ← CHANGED
-          : "/my-item-donations",
+          ? `/volunteer/assignments/${n.referenceId}` // Volunteer ဖြစ်ရင် သူ့ Assignment Detail ဆီ သွားမည်
+          : "/my-item-donations", // ရိုးရိုး Donor ဖြစ်ရင် သူ့ရဲ့ အလှူမှတ်တမ်းဆီ သွားမည်
+
       AID_REQUEST: isAdmin
         ? `/admin/aid-requests`
         : `/aid-requests/${n.referenceId}`,
+
       CAMPAIGN: `/campaigns/${n.referenceId}`,
+
       VOLUNTEER: isAdmin ? "/admin/volunteers" : "/volunteer/assigned",
     };
 
+    // 🚀 သက်ဆိုင်ရာ လမ်းကြောင်းအမှန်အတိုင်း ခေါ်ယူပြီး ကူးပြောင်းခြင်း
     const route = routeMap[n.referenceType];
     if (route) {
-      setOpen(false);
-      navigate(route);
+      setOpen(false); // Bell Dropdown Menu ကို ပိတ်ခြင်း
+      navigate(route); // စာမျက်နှာသို့ သွားခြင်း
     }
   };
-
   // ✅ Time ago
   const timeAgo = (dateStr) => {
     if (!dateStr) return "—";
