@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
+import { YANGON_TOWNSHIPS } from "../../constants";
 
 const PAGE_SIZE = 10;
 
@@ -12,6 +13,7 @@ function VolunteerList() {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [townshipFilter, setTownshipFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmFire, setConfirmFire] = useState(null);
 
@@ -55,8 +57,13 @@ function VolunteerList() {
     }
   };
 
-  const totalPages = Math.ceil(volunteers.length / PAGE_SIZE);
-  const paginated = volunteers.slice(
+  const filteredVolunteers = volunteers.filter(vol => {
+    if (!townshipFilter) return true;
+    return vol.operatingTownship === townshipFilter;
+  });
+
+  const totalPages = Math.ceil(filteredVolunteers.length / PAGE_SIZE);
+  const paginated = filteredVolunteers.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
@@ -118,9 +125,27 @@ function VolunteerList() {
               className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none transition"
             />
           </div>
-          {search && (
+          
+          <select
+            value={townshipFilter}
+            onChange={(e) => {
+              setTownshipFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition"
+          >
+            <option value="">All Townships</option>
+            {YANGON_TOWNSHIPS.map(t => (
+              <option key={t.en} value={t.en}>{t.en}</option>
+            ))}
+          </select>
+
+          {(search || townshipFilter) && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => {
+                setSearch("");
+                setTownshipFilter("");
+              }}
               className="bg-slate-900 border border-slate-800 text-gray-400 px-3 rounded-xl text-sm hover:bg-slate-800 transition cursor-pointer"
             >
               Clear
@@ -143,6 +168,7 @@ function VolunteerList() {
                     <th className="p-4">Username</th>
                     <th className="p-4">Email</th>
                     <th className="p-4">Phone</th>
+                    <th className="p-4">Township</th>
                     <th className="p-4">Approved Date</th>
                     <th className="p-4">Status</th>
                     <th className="p-4 text-center">Action</th>
@@ -162,6 +188,9 @@ function VolunteerList() {
                       </td>
                       <td className="p-4 text-gray-400">
                         {vol.user?.phoneNumber || "—"}
+                      </td>
+                      <td className="p-4 text-cyan-400 font-medium">
+                        {vol.operatingTownship || "—"}
                       </td>
                       <td className="p-4 text-gray-500 font-mono">
                         {vol.appliedAt

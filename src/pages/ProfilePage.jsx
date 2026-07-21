@@ -111,6 +111,7 @@ function ProfilePage() {
     availableDays: [],
     availableTimes: [],
     yearsOfExperience: 0,
+    isActive: true,
   });
 
   // ── Derived ────────────────────────────────────────────────
@@ -194,6 +195,7 @@ function ProfilePage() {
               : d.availableTimes.split(",").map((v) => v.trim())
             : [],
           yearsOfExperience: d.yearsOfExperience || 0,
+          isActive: d.isActive !== undefined ? d.isActive : true,
         });
       } catch {
         setError("Profile ဆွဲယူလို့ မရဘူး။");
@@ -334,6 +336,7 @@ function ProfilePage() {
             ? form.availableTimes.join(", ")
             : null,
         yearsOfExperience: form.yearsOfExperience,
+        isActive: form.isActive,
       };
 
       console.log("🔍 FINAL PAYLOAD BEING SENT:", payload);
@@ -847,6 +850,37 @@ function ProfilePage() {
                     <span className="text-[10px] opacity-60">{sub}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Is Active toggle */}
+            <div
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  isActive: !prev.isActive,
+                }))
+              }
+              className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition ${
+                form.isActive
+                  ? "bg-teal-500/10 border-teal-500/40"
+                  : "bg-slate-800 border-slate-700 hover:border-slate-600"
+              }`}
+            >
+              <div>
+                <p className="text-sm text-white font-medium">
+                  တာဝန်ထမ်းဆောင်ရန် အသင့်ရှိသည် (Active / Available)
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Turn off if you are busy or on leave
+                </p>
+              </div>
+              <div
+                className={`w-11 h-6 rounded-full transition-all relative ${form.isActive ? "bg-teal-500" : "bg-slate-700"}`}
+              >
+                <div
+                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${form.isActive ? "left-6" : "left-1"}`}
+                />
               </div>
             </div>
 

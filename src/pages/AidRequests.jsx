@@ -35,7 +35,7 @@ function AidRequests() {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/aid-requests");
+      const res = await api.get("/aid-requests/my");
       setRequests(res.data);
     } catch (err) {
       setError("Failed to load aid requests.");
@@ -109,7 +109,7 @@ function AidRequests() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-800 pb-5">
           <div>
             <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-              🆘 Aid Requests
+              🆘 My Aid Requests
             </h1>
             <p className="text-xs text-gray-400 mt-1">
               {filtered.length} request{filtered.length !== 1 ? "s" : ""} found

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import api from "../api";
 
 const TOWNSHIPS = [
@@ -112,7 +113,16 @@ function DonateForm() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6 flex justify-center items-start pt-10">
-      <div className="max-w-md w-full bg-slate-900/50 border border-slate-800 p-6 rounded-2xl space-y-5 shadow-2xl">
+      <div className="max-w-md w-full space-y-4">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="text-gray-400 hover:text-white flex items-center gap-2 font-semibold transition w-fit"
+        >
+          <ArrowLeft className="w-5 h-5" /> Back
+        </button>
+
+        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl space-y-5 shadow-2xl">
         {/* Campaign Info */}
         <div className="space-y-1">
           <span className="text-[10px] bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
@@ -310,6 +320,7 @@ function DonateForm() {
             {submitting ? "Submitting..." : "Confirm & Donate"}
           </button>
         </form>
+        </div>
       </div>
     </div>
   );

@@ -8,14 +8,16 @@ function ManageUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("ALL");
+  const [filterTownship, setFilterTownship] = useState("ALL");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [editingUser, setEditingUser] = useState(null); // user being edited
   const [actionLoading, setActionLoading] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null); // For details modal
 
   useEffect(() => {
     const role = localStorage.getItem("role");
-    if (role !== "ROLE_SUPER_ADMIN") {
+    if (role !== "ROLE_SUPER_ADMIN" && role !== "ROLE_SUB_ADMIN") {
       navigate("/admin/dashboard");
       return;
     }
@@ -74,8 +76,12 @@ function ManageUsers() {
       u.username?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase());
     const roleMatch = filterRole === "ALL" || u.role === filterRole;
-    return searchMatch && roleMatch;
+    const townshipMatch = filterTownship === "ALL" || u.township === filterTownship;
+    return searchMatch && roleMatch && townshipMatch;
   });
+
+  // Get unique townships for the dropdown
+  const uniqueTownships = Array.from(new Set(users.map(u => u.township).filter(Boolean))).sort();
 
   const roleColor = (role) => {
     const map = {
@@ -101,7 +107,7 @@ function ManageUsers() {
               👥 Manage Users
             </h1>
             <p className="text-xs text-gray-500 mt-1 font-mono">
-              {filtered.length} of {users.length} users · Super Admin only
+              {filtered.length} of {users.length} users · {localStorage.getItem("role") === "ROLE_SUPER_ADMIN" ? "Super Admin (Global)" : `Sub Admin (${localStorage.getItem("township") || "Local"})`}
             </p>
           </div>
           <div className="flex gap-3">
@@ -201,6 +207,16 @@ function ManageUsers() {
             <option value="ROLE_VOLUNTEER">VOLUNTEER</option>
             <option value="ROLE_PUBLIC">PUBLIC</option>
           </select>
+          <select
+            value={filterTownship}
+            onChange={(e) => setFilterTownship(e.target.value)}
+            className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+          >
+            <option value="ALL">All Townships</option>
+            {uniqueTownships.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </div>
 
         {/* Table */}
@@ -236,14 +252,17 @@ function ManageUsers() {
                     >
                       <td className="p-4 font-mono text-gray-600">#{u.id}</td>
                       <td className="p-4">
-                        <span className="font-bold text-white">
+                        <button 
+                          onClick={() => setSelectedUser(u)}
+                          className="font-bold text-white hover:text-purple-400 cursor-pointer text-left transition-colors"
+                        >
                           {u.username}
                           {String(u.id) === String(currentUserId) && (
                             <span className="ml-1.5 text-[9px] text-teal-400 font-mono">
                               (you)
                             </span>
                           )}
-                        </span>
+                        </button>
                       </td>
                       <td className="p-4 text-gray-400">{u.email}</td>
                       <td className="p-4 text-gray-500 font-mono">
@@ -262,10 +281,12 @@ function ManageUsers() {
                           >
                             <option value="ROLE_PUBLIC">PUBLIC</option>
                             <option value="ROLE_VOLUNTEER">VOLUNTEER</option>
-                            <option value="ROLE_SUB_ADMIN">SUB_ADMIN</option>
-                            <option value="ROLE_SUPER_ADMIN">
-                              SUPER_ADMIN
-                            </option>
+                            {localStorage.getItem("role") === "ROLE_SUPER_ADMIN" && (
+                              <>
+                                <option value="ROLE_SUB_ADMIN">SUB_ADMIN</option>
+                                <option value="ROLE_SUPER_ADMIN">SUPER_ADMIN</option>
+                              </>
+                            )}
                           </select>
                         ) : (
                           <span
@@ -317,6 +338,79 @@ function ManageUsers() {
           </div>
         )}
       </div>
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <span className="text-2xl">👤</span> User Profile
+              </h2>
+              <button 
+                onClick={() => setSelectedUser(null)}
+                className="text-gray-500 hover:text-white transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-2xl">
+                  {selectedUser.username?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">{selectedUser.fullName || selectedUser.username}</h3>
+                  <p className="text-sm text-gray-400 font-mono">{selectedUser.email}</p>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-mono border ${roleColor(selectedUser.role)}`}>
+                    {roleLabel(selectedUser.role)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Phone</p>
+                  <p className="text-sm text-gray-200">{selectedUser.phoneNumber || "—"}</p>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">NRC</p>
+                  <p className="text-sm text-gray-200">{selectedUser.nrc || "—"}</p>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Township</p>
+                  <p className="text-sm text-gray-200">{selectedUser.township || "—"}</p>
+                </div>
+                <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Division</p>
+                  <p className="text-sm text-gray-200">{selectedUser.division || "—"}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800/50">
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-2">Full Address</p>
+                <p className="text-sm text-gray-300">{selectedUser.address || "No address provided."}</p>
+              </div>
+
+              {selectedUser.role?.includes("VOLUNTEER") && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Vehicle</p>
+                    <p className="text-sm text-gray-200">
+                      {selectedUser.hasVehicle ? `✅ Yes (${selectedUser.vehicleType || "Not specified"})` : "❌ No"}
+                    </p>
+                  </div>
+                  <div className="bg-slate-900/50 p-3 rounded-xl border border-slate-800/50">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-1">Experience</p>
+                    <p className="text-sm text-gray-200">{selectedUser.yearsOfExperience || 0} years</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

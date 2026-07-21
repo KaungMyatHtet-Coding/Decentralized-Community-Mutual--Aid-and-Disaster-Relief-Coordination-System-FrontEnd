@@ -1,5 +1,6 @@
 import {useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import api from "../api";
 
 function Register() {
@@ -39,8 +40,11 @@ function Register() {
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-teal-500/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
 
-        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-slate-800/80 relative z-10">
-          <div className="text-center mb-6">
+        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-slate-800/80 relative z-10 w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto">
+          <Link to="/" className="absolute top-4 left-4 text-slate-400 hover:text-teal-400 flex items-center gap-1 text-xs font-semibold transition">
+            <ArrowLeft className="w-4 h-4" /> Home
+          </Link>
+          <div className="text-center mb-8 mt-4">
             <h2 className="text-3xl font-extrabold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
               Create Account
             </h2>

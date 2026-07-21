@@ -30,15 +30,17 @@ import ProfilePage from "./pages/ProfilePage";
 import ProfileViewPage from "./pages/ProfileViewPage"
 import VolunteerHistory from "./pages/VolunteerHistory";
 import AdminDonationApprovals from "./pages/AdminDonationApprovals";
-import StorePage from "./pages/admin/StorePage"
+import StorePage from "./pages/admin/StorePage";
+import StockDetails from "./pages/admin/StockDetailspage";
 // ... အပေါ်က Import တွေ အားလုံးကို မူလအတိုင်း ထားပါ ...
+import HomePage from "./pages/HomePage";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* URL က / အလွတ်ဖြစ်နေရင် /login ဆီ တန်းပို့ပေးမယ့်အပိုင်း */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        {/* Main Landing Page */}
+        <Route path="/" element={<HomePage />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -81,6 +83,7 @@ function App() {
         <Route path="/volunteer/history" element={<VolunteerHistory />} />
         // ညီလေးရဲ့ Admin Router Area ထဲမှာ သွားထည့်ပေးပါ
         <Route path="/admin/store" element={<StorePage />} />
+        <Route path="/admin/stock-details" element={<StockDetails />} />
       </Routes>
     </Router>
   );

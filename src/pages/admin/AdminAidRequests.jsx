@@ -67,9 +67,22 @@ function AdminAidRequests() {
 
   // ── actions ────────────────────────────────────────────
   const updateStatus = async (id, status) => {
+    let proofUrl = "";
+    if (status === "RESOLVED") {
+      const url = prompt("Please provide a photo URL as proof of delivery/resolution:");
+      if (url === null) return; // User cancelled
+      if (!url.trim()) {
+        alert("A proof photo is required to resolve this request.");
+        return;
+      }
+      proofUrl = url.trim();
+    }
+
     setActionLoading(`${id}-${status}`);
     try {
-      await api.patch(`/aid-requests/${id}/status?status=${status}`);
+      await api.patch(`/aid-requests/${id}/status`, null, {
+        params: { status, proofPhotoUrl: proofUrl }
+      });
       setMessage(`✅ Request #${id} marked as ${status}`);
       fetchRequests();
       setTimeout(() => setMessage(""), 4000);
@@ -226,6 +239,11 @@ function AdminAidRequests() {
                       : "—"}
                   </span>
                   <span>👍 {req.upvoteCount || 0} upvotes</span>
+                  {req.proofPhotoUrl && (
+                    <a href={req.proofPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">
+                      🖼️ View Proof Photo
+                    </a>
+                  )}
                 </div>
 
                 {/* Admin Actions */}

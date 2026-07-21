@@ -240,6 +240,7 @@ function ManagePosts() {
                   <tr className="border-b border-slate-800 bg-slate-900/60 text-[10px] uppercase font-mono tracking-wider text-gray-400">
                     <th className="p-4">#</th>
                     <th className="p-4">Title</th>
+                    <th className="p-4">Township</th>
                     <th className="p-4">Status</th>
                     <th className="p-4">Author</th>
                     <th className="p-4">Date</th>
@@ -255,6 +256,11 @@ function ManagePosts() {
                       <td className="p-4 font-mono text-gray-500">{post.id}</td>
                       <td className="p-4 font-semibold text-white max-w-xs truncate">
                         {post.title}
+                      </td>
+                      <td className="p-4">
+                        <span className="bg-slate-800 text-gray-300 px-2 py-0.5 rounded text-[10px] font-mono border border-slate-700">
+                          {post.township || "Global"}
+                        </span>
                       </td>
                       <td className="p-4">
                         <span
