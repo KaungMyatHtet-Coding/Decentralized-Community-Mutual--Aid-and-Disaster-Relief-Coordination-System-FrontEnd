@@ -20,6 +20,7 @@ function DonateForm() {
   const navigate = useNavigate();
 
   const [campaign, setCampaign] = useState(null);
+  const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -41,9 +42,16 @@ function DonateForm() {
   });
 
   useEffect(() => {
-    api
-      .get(`/campaigns/${campaignId}`)
-      .then((res) => setCampaign(res.data))
+    Promise.all([
+      api.get(`/campaigns/${campaignId}`),
+      api.get(`/donations/campaign/${campaignId}`)
+    ])
+      .then(([campRes, donRes]) => {
+        setCampaign(campRes.data);
+        const confirmed = donRes.data.filter(d => d.status === "CONFIRMED");
+        const recent = confirmed.sort((a,b) => new Date(b.donatedAt) - new Date(a.donatedAt)).slice(0, 5);
+        setDonations(recent);
+      })
       .catch(() => setError("Failed to fetch campaign details."))
       .finally(() => setLoading(false));
   }, [campaignId]);
@@ -145,6 +153,28 @@ function DonateForm() {
           </div>
         )}
 
+        {/* Social Proof: Recent Donors */}
+        {donations.length > 0 && (
+          <div className="bg-slate-950 rounded-xl p-4 border border-slate-800">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Recent Donors</h3>
+            <div className="space-y-3">
+              {donations.map(d => (
+                <div key={d.id} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 text-xs">
+                      {d.donor?.username ? d.donor.username.charAt(0).toUpperCase() : "A"}
+                    </div>
+                    <span className="text-gray-300">{d.donor?.username || "Anonymous"}</span>
+                  </div>
+                  <span className="font-bold text-teal-400">
+                    {d.donationType === "MONEY" ? `${Number(d.amount).toLocaleString()} MMK` : `${d.itemName} (${d.quantity})`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Donation Type */}
           <div>
@@ -173,19 +203,44 @@ function DonateForm() {
 
           {/* MONEY */}
           {formData.donationType === "MONEY" && (
-            <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-                Amount (MMK)
-              </label>
-              <input
-                type="number"
-                name="amount"
-                required
-                placeholder="10000"
-                value={formData.amount}
-                onChange={handleChange}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl p-3 text-sm"
-              />
+            <div className="space-y-4">
+              {/* Payment Instructions / QR Codes */}
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Payment Options</h3>
+                <div className="flex gap-4">
+                  <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center space-y-2 hover:border-teal-500/50 transition cursor-pointer">
+                    <div className="w-16 h-16 bg-white p-1 rounded-lg">
+                      {/* Placeholder for KBZPay QR */}
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=KBZPay" alt="KBZPay QR" className="w-full h-full object-contain" />
+                    </div>
+                    <span className="text-xs font-bold text-blue-400">KBZ Pay</span>
+                    <span className="text-[10px] text-gray-500">09xxxxxxxxx</span>
+                  </div>
+                  <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center space-y-2 hover:border-teal-500/50 transition cursor-pointer">
+                    <div className="w-16 h-16 bg-white p-1 rounded-lg">
+                      {/* Placeholder for WavePay QR */}
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=WavePay" alt="WavePay QR" className="w-full h-full object-contain" />
+                    </div>
+                    <span className="text-xs font-bold text-yellow-400">Wave Pay</span>
+                    <span className="text-[10px] text-gray-500">09xxxxxxxxx</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
+                  Amount (MMK)
+                </label>
+                <input
+                  type="number"
+                  name="amount"
+                  required
+                  placeholder="10000"
+                  value={formData.amount}
+                  onChange={handleChange}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl p-3 text-sm"
+                />
+              </div>
             </div>
           )}
 

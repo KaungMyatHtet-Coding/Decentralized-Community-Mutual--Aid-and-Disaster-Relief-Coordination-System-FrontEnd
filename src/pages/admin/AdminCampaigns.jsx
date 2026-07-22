@@ -4,8 +4,12 @@ import api from "../../api";
 
 const emptyForm = {
   title: "",
+  titleMy: "",
   description: "",
+  descriptionMy: "",
   targetAmount: "",
+  category: "",
+  imageUrl: "",
   startDate: "",
   endDate: "",
   status: "ACTIVE",
@@ -22,6 +26,9 @@ function AdminCampaigns() {
   const [editingId, setEditingId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [form, setForm] = useState(emptyForm);
+
+  const role = localStorage.getItem("role");
+  const isSuperAdmin = role === "ROLE_SUPER_ADMIN";
 
   // ── fetch ──────────────────────────────────────────────
   const fetchCampaigns = async () => {
@@ -53,27 +60,31 @@ function AdminCampaigns() {
   const openEdit = (c) => {
     setEditingId(c.id);
     setForm({
-      title: c.title,
-      description: c.description,
-      targetAmount: c.targetAmount,
+      title: c.title || "",
+      titleMy: c.titleMy || "",
+      description: c.description || "",
+      descriptionMy: c.descriptionMy || "",
+      targetAmount: c.targetAmount || "",
+      category: c.category || "",
+      imageUrl: c.imageUrl || "",
       startDate: c.startDate ? c.startDate.slice(0, 10) : "",
       endDate: c.endDate ? c.endDate.slice(0, 10) : "",
-      status: c.status,
+      status: c.status || "ACTIVE",
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async () => {
-    if (!form.title || !form.description || !form.targetAmount || !form.startDate || !form.endDate) {
-      setError("Please fill all fields.");
+    if (!form.title || !form.description || !form.startDate || !form.endDate || !form.imageUrl) {
+      setError("Please fill all required fields (Title, Description, Dates, Image URL).");
       return;
     }
     setSubmitting(true);
     try {
       const payload = {
         ...form,
-        targetAmount: parseFloat(form.targetAmount),
+        targetAmount: form.targetAmount ? parseFloat(form.targetAmount) : null,
         startDate: new Date(form.startDate + "T00:00:00").toISOString(),
         endDate: new Date(form.endDate + "T23:59:59").toISOString(),
       };
@@ -106,11 +117,23 @@ function AdminCampaigns() {
     }
   };
 
+  const handleApprove = async (id) => {
+    try {
+      await api.put(`/campaigns/${id}/approve`);
+      showMsg("✅ Campaign approved and is now ACTIVE!");
+      fetchCampaigns();
+    } catch (err) {
+      setError(err.response?.data || "Failed to approve.");
+    }
+  };
+
   const statusColor = (status) => {
     switch (status) {
       case "ACTIVE":    return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
       case "COMPLETED": return "text-blue-400 bg-blue-500/10 border-blue-500/20";
       case "CANCELLED": return "text-rose-400 bg-rose-500/10 border-rose-500/20";
+      case "PENDING":   return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+      case "REJECTED":  return "text-red-500 bg-red-500/10 border-red-500/20";
       default:          return "text-gray-400 bg-gray-500/10 border-gray-500/20";
     }
   };
@@ -173,8 +196,8 @@ function AdminCampaigns() {
               {editingId ? "✏️ Edit Campaign" : "➕ New Campaign"}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Title</label>
+              <div className="sm:col-span-1">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Title (English) *</label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -182,8 +205,17 @@ function AdminCampaigns() {
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Description</label>
+              <div className="sm:col-span-1">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Title (Myanmar)</label>
+                <input
+                  value={form.titleMy}
+                  onChange={(e) => setForm({ ...form, titleMy: e.target.value })}
+                  placeholder="မြန်မာလို ခေါင်းစဉ်"
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                />
+              </div>
+              <div className="sm:col-span-1">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Description (English) *</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -192,13 +224,41 @@ function AdminCampaigns() {
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none resize-none"
                 />
               </div>
+              <div className="sm:col-span-1">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Description (Myanmar)</label>
+                <textarea
+                  value={form.descriptionMy}
+                  onChange={(e) => setForm({ ...form, descriptionMy: e.target.value })}
+                  placeholder="ကမ်ပိန်းအကြောင်း မြန်မာလိုရှင်းလင်းချက်..."
+                  rows={3}
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none resize-none"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Cover Image URL *</label>
+                <input
+                  value={form.imageUrl}
+                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                />
+              </div>
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Target Amount (MMK)</label>
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Category</label>
+                <input
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  placeholder="e.g. Urgent, Rebuilding"
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Target Amount (MMK) - Optional</label>
                 <input
                   type="number"
                   value={form.targetAmount}
                   onChange={(e) => setForm({ ...form, targetAmount: e.target.value })}
-                  placeholder="e.g. 500000"
+                  placeholder="Leave empty if no target"
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
                 />
               </div>
@@ -209,9 +269,11 @@ function AdminCampaigns() {
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
                 >
+                  <option value="PENDING">PENDING</option>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="COMPLETED">COMPLETED</option>
                   <option value="CANCELLED">CANCELLED</option>
+                  <option value="REJECTED">REJECTED</option>
                 </select>
               </div>
               <div>
@@ -291,6 +353,14 @@ function AdminCampaigns() {
                       <span>→ {c.endDate ? new Date(c.endDate).toLocaleDateString() : "—"}</span>
                     </div>
                     <div className="flex gap-2">
+                      {c.status === "PENDING" && isSuperAdmin && (
+                        <button
+                          onClick={() => handleApprove(c.id)}
+                          className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition"
+                        >
+                          ✅ Approve
+                        </button>
+                      )}
                       <button
                         onClick={() => openEdit(c)}
                         className="bg-slate-800 hover:bg-slate-700 text-gray-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition"
