@@ -176,21 +176,43 @@ export default function VolunteerAssignmentDetail() {
         </div>
 
         {/* Donor Information */}
-        <div className="bg-slate-900 rounded-3xl p-6">
-          <h2 className="text-teal-400 uppercase text-xs tracking-widest mb-4">👤 Donor Information</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between">
+        <div className="bg-slate-900 rounded-3xl p-6 space-y-4 border border-slate-800">
+          <h2 className="text-teal-400 uppercase text-xs tracking-widest font-bold flex items-center gap-2">
+            <span>👤 Donor & Pickup Address Information</span>
+          </h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
               <span className="text-slate-400">Name</span>
-              <span>{donation.donor?.fullName || donation.donor?.username}</span>
+              <span className="font-semibold text-white">{donation.donor?.fullName || donation.donor?.username || "Anonymous"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Phone</span>
-              <span className="text-amber-400 font-medium">{donation.donorPhone}</span>
+            <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+              <span className="text-slate-400">Handover Type</span>
+              <span className={`font-bold px-2.5 py-0.5 rounded-full text-xs border ${
+                donation.handoverType === "PICKUP"
+                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  : "bg-teal-500/10 text-teal-400 border-teal-500/20"
+              }`}>
+                {donation.handoverType === "PICKUP" ? "🚚 Pickup Requested" : "🏢 Direct Drop-off"}
+              </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
+              <span className="text-slate-400">Contact Phone</span>
+              <span className="text-amber-400 font-bold font-mono text-base">📞 {donation.donorPhone}</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-slate-800/80 pb-2">
               <span className="text-slate-400">Township</span>
-              <span>{donation.donorTownship}</span>
+              <span className="font-semibold text-white">📍 {donation.donorTownship}</span>
             </div>
+            {donation.streetAddress && (
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-1">
+                <span className="text-xs text-amber-400 font-bold block uppercase tracking-wider">
+                  🏠 Pickup Street Address / ယူဆောင်ပေးရမည့် လိပ်စာ:
+                </span>
+                <p className="text-sm font-semibold text-white leading-relaxed">
+                  {donation.streetAddress}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

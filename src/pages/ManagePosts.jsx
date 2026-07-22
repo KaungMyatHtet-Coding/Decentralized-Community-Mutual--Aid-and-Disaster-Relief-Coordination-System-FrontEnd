@@ -9,6 +9,7 @@ function ManagePosts() {
   const [showForm, setShowForm] = useState(false);
   const [editingPost, setEditingPost] = useState(null); // null = create, object = edit
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
@@ -52,6 +53,26 @@ function ManagePosts() {
       status: post.status,
     });
     setShowForm(true);
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      
+      const res = await api.post("/upload/photo", formDataUpload, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setFormData({ ...formData, imageUrl: res.data.url });
+    } catch (err) {
+      setError("Failed to upload image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -172,17 +193,31 @@ function ManagePosts() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Image URL (optional)
+                  Image (optional)
                 </label>
-                <input
-                  type="text"
-                  value={formData.imageUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, imageUrl: e.target.value })
-                  }
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl p-3 text-sm text-white focus:outline-none transition font-mono text-xs"
-                  placeholder="https://..."
-                />
+                <div className="mt-1 flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-teal-500/10 file:text-teal-400 hover:file:bg-teal-500/20 transition cursor-pointer"
+                  />
+                  {uploading && <span className="text-xs text-teal-400 animate-pulse">Uploading...</span>}
+                </div>
+                {formData.imageUrl && (
+                  <div className="mt-3 relative w-full h-40 rounded-xl overflow-hidden border border-slate-700">
+                    <img src={formData.imageUrl} alt="Post Preview" className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, imageUrl: ""})}
+                      className="absolute top-2 right-2 bg-rose-500/80 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-rose-500 transition"
+                      title="Remove Image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">

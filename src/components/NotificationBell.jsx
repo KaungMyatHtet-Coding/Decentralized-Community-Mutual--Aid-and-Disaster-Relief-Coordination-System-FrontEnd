@@ -107,9 +107,16 @@ function NotificationBell() {
           ? `/volunteer/assignments/${n.referenceId}` // Volunteer ဖြစ်ရင် သူ့ Assignment Detail ဆီ သွားမည်
           : "/my-item-donations", // ရိုးရိုး Donor ဖြစ်ရင် သူ့ရဲ့ အလှူမှတ်တမ်းဆီ သွားမည်
 
+      // 🆘 AID_REQUEST — Volunteer ဆိုရင် /volunteer/aid-tasks သို့ တန်းသွားမည်
       AID_REQUEST: isAdmin
         ? `/admin/aid-requests`
-        : `/aid-requests/${n.referenceId}`,
+        : isVolunteer
+          ? `/volunteer/aid-tasks`   // ✅ Volunteer → Available Tasks
+          : `/aid-requests`,         // Public → Aid Request list
+
+      SOS_ALERT: isAdmin ? "/admin/aid-requests" : isVolunteer ? "/volunteer/aid-tasks" : "/dashboard",
+
+      DELIVERY_REPORT: isAdmin ? "/admin/delivery-reviews" : "/volunteer/aid-tasks",
 
       CAMPAIGN: `/campaigns/${n.referenceId}`,
 
