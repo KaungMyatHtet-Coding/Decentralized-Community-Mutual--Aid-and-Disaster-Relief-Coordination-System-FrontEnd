@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { YANGON_TOWNSHIPS } from "../../constants";
 
 function DonationApprovals() {
   const navigate = useNavigate();
@@ -15,7 +16,11 @@ function DonationApprovals() {
   const [tab, setTab] = useState("PENDING"); // PENDING | ALL
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [townshipFilter, setTownshipFilter] = useState("ALL");
+  const [monthFilter, setMonthFilter] = useState("ALL");
   const [exporting, setExporting] = useState(false);
+  const [assignModalItem, setAssignModalItem] = useState(null); // ID of item donation being assigned
+  const [selectedVolunteerId, setSelectedVolunteerId] = useState("");
 
   // ── fetch Data ──────────────────────────────────────────
   const fetchDonations = async () => {
@@ -29,16 +34,23 @@ function DonationApprovals() {
       ]);
 
       // Item donation ရဲ့ status တွေကို Backend အတိုင်း ညှိယူခြင်း
-      const normalizedItems = itemRes.data.map((d) => ({
-        ...d,
-        donationType: "ITEMS",
-        amount: null,
-        // 🎯 တကယ်လို့ status က PENDING_ADMIN ဖြစ်နေရင် PENDING အနေနဲ့ပြမယ်
-        status: d.status === "PENDING_ADMIN" ? "PENDING" : d.status,
-        donatedAt: d.createdAt,
-        proofImageUrl: d.itemPhotoUrl,
-        _isItemDonation: true, // 💡 Item ဟုတ်မဟုတ် စစ်ထုတ်ရန် Flag
-      }));
+      const normalizedItems = itemRes.data.map((d) => {
+        let uiStatus = d.status;
+        if (d.status === "PENDING_ADMIN") uiStatus = "PENDING";
+        else if (d.status === "ADMIN_REJECTED" || d.status === "VOLUNTEER_REJECTED") uiStatus = "REJECTED";
+        else if (d.status === "STORED_IN_STOCK") uiStatus = "STORED";
+        
+        return {
+          ...d,
+          donationType: "ITEMS",
+          amount: null,
+          status: uiStatus,
+          _originalStatus: d.status,
+          donatedAt: d.createdAt,
+          proofImageUrl: d.itemPhotoUrl,
+          _isItemDonation: true,
+        };
+      });
 
       setDonations([...moneyRes.data, ...normalizedItems]);
       setVolunteers(volunteersRes.data || []);
@@ -63,26 +75,11 @@ function DonationApprovals() {
     setActionLoading(`confirm-${id}`);
     try {
       if (isItem) {
-        // 💡 ITEM DONATION ဖြစ်ခဲ့ရင် Volunteer အရင် ရွေးခိုင်းမယ်
-        const volunteerList = volunteers
-          .map(
-            (v) =>
-              `${v.id} - ${v.fullName || v.username} (${v.township || "No Township"})`
-          )
-          .join("\n");
-
-        const volunteerId = prompt(
-          `Choose Volunteer ID to assign for Item Donation #${id}:\n\n${volunteerList}\n\nEnter Volunteer ID:`
-        );
-
-        if (!volunteerId) {
-          setActionLoading(null);
-          return; // Cancel နှိပ်ရင် ဘာမှမလုပ်ဘူး
-        }
-
-        // 🎯 ပထမဖိုင်ထဲက Endpoint အတိုင်း Volunteer ID ပါ တွဲပို့ပေးလိုက်ပါတယ်
-        await api.patch(`/item-donations/${id}/approve?volunteerId=${volunteerId}`);
-        showMsg("✅ Item Donation Approved and Volunteer Assigned!");
+        // Open clean Modal instead of browser prompt!
+        setAssignModalItem(id);
+        setSelectedVolunteerId("");
+        setActionLoading(null);
+        return;
       } else {
         // 💰 MONEY DONATION ဖြစ်ခဲ့ရင် ပုံမှန်အတိုင်း တိုက်ရိုက် Approve လုပ်မယ်
         await api.patch(`/donations/${id}/confirm`);
@@ -91,6 +88,38 @@ function DonationApprovals() {
       fetchDonations();
     } catch (err) {
       setError(err.response?.data || "Failed to approve donation.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleManualAssign = async () => {
+    if (!selectedVolunteerId) {
+      alert("Please select a volunteer from the list.");
+      return;
+    }
+    setActionLoading(`assign-${assignModalItem}`);
+    try {
+      await api.patch(`/item-donations/${assignModalItem}/approve?volunteerId=${selectedVolunteerId}`);
+      showMsg("✅ Item Donation Approved and Volunteer Assigned!");
+      setAssignModalItem(null);
+      fetchDonations();
+    } catch (err) {
+      alert("Failed to assign volunteer: " + (err.response?.data || err.message));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    setActionLoading(`assign-${assignModalItem}`);
+    try {
+      await api.post(`/item-donations/${assignModalItem}/auto-assign`);
+      showMsg("⚡ Auto-assigned to nearest available volunteer!");
+      setAssignModalItem(null);
+      fetchDonations();
+    } catch (err) {
+      alert("Auto-assign failed: " + (err.response?.data || err.message));
     } finally {
       setActionLoading(null);
     }
@@ -123,18 +152,29 @@ function DonationApprovals() {
 
   // ── Filter & Search Logic ──────────────────────────────
   const filtered = donations.filter((d) => {
-    
     const tabMatch = tab === "PENDING" ? d.status === "PENDING" : true;
     const statusMatch = statusFilter === "ALL" || d.status === statusFilter;
+    
+    // Township logic (Money doesn't have donorTownship easily exposed here unless mapped in donor, fallback to ALL if money)
+    const itemTownship = d.donorTownship || (d.donor?.township) || "";
+    const townshipMatch = townshipFilter === "ALL" || itemTownship === townshipFilter;
+
+    // Date logic (YYYY-MM)
+    const monthMatch = monthFilter === "ALL" || (d.donatedAt && d.donatedAt.startsWith(monthFilter));
+
     const searchMatch =
       search === "" ||
       d.donor?.username?.toLowerCase().includes(search.toLowerCase()) ||
       d.campaign?.title?.toLowerCase().includes(search.toLowerCase()) ||
       (d.itemName && d.itemName.toLowerCase().includes(search.toLowerCase()));
-    return tabMatch && statusMatch && searchMatch;
+
+    return tabMatch && statusMatch && townshipMatch && monthMatch && searchMatch;
   });
 
   const pendingCount = donations.filter((d) => d.status === "PENDING").length;
+
+  // Get unique months for filter
+  const uniqueMonths = [...new Set(donations.map(d => d.donatedAt ? d.donatedAt.slice(0, 7) : "").filter(Boolean))].sort().reverse();
 
 
 const exportPDF = async () => {
@@ -186,6 +226,8 @@ const exportPDF = async () => {
       case "CONFIRMED":
       case "APPROVED":
         return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+      case "STORED":
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
       case "REJECTED":
         return "bg-rose-500/10 text-rose-400 border-rose-500/20";
       default:
@@ -267,26 +309,49 @@ const exportPDF = async () => {
           ))}
         </div>
 
-        {/* Search Bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
           <input
             type="text"
-            placeholder="Search by donor, campaign, or item name..."
+            placeholder="Search donor, campaign, or item..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+            className="flex-1 min-w-[200px] bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
           />
           {tab === "ALL" && (
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
-            >
-              <option value="ALL">All Status</option>
-              <option value="PENDING">PENDING</option>
-              <option value="CONFIRMED">CONFIRMED</option>
-              <option value="REJECTED">REJECTED</option>
-            </select>
+            <>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+              >
+                <option value="ALL">All Status</option>
+                <option value="PENDING">PENDING</option>
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="REJECTED">REJECTED</option>
+                <option value="STORED">STORED</option>
+              </select>
+              <select
+                value={townshipFilter}
+                onChange={(e) => setTownshipFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+              >
+                <option value="ALL">All Townships</option>
+                {YANGON_TOWNSHIPS.map((t) => (
+                  <option key={t.en} value={t.en}>{t.en}</option>
+                ))}
+              </select>
+              <select
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+              >
+                <option value="ALL">All Dates</option>
+                {uniqueMonths.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </>
           )}
         </div>
 
@@ -412,6 +477,72 @@ const exportPDF = async () => {
           </div>
         )}
       </div>
+
+      {/* 🤝 Assign Volunteer Modal */}
+      {assignModalItem && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-bold text-teal-400">🤝 Assign Volunteer</h3>
+                <p className="text-xs text-slate-400">Item Donation #{assignModalItem}</p>
+              </div>
+              <button
+                onClick={() => setAssignModalItem(null)}
+                className="text-slate-400 hover:text-white text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Option 1: Auto Assign */}
+            <div className="bg-slate-950/80 border border-teal-500/30 rounded-2xl p-4 space-y-2">
+              <span className="text-xs font-bold text-teal-400 uppercase tracking-wider block">
+                ⚡ Option 1: Smart Auto-Assign
+              </span>
+              <p className="text-xs text-slate-400">
+                Automatically finds and assigns the nearest active volunteer in the donor's township.
+              </p>
+              <button
+                onClick={handleAutoAssign}
+                disabled={actionLoading !== null}
+                className="w-full bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-teal-500/20"
+              >
+                {actionLoading === `assign-${assignModalItem}` ? "Auto-Assigning..." : "⚡ Auto-Assign Nearest Volunteer"}
+              </button>
+            </div>
+
+            <div className="text-center text-xs text-slate-500 font-bold">— OR SELECT SPECIFIC VOLUNTEER —</div>
+
+            {/* Option 2: Manual Selection */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                Option 2: Select Township Volunteer
+              </label>
+              <select
+                value={selectedVolunteerId}
+                onChange={(e) => setSelectedVolunteerId(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-teal-500"
+              >
+                <option value="">-- Choose Volunteer --</option>
+                {volunteers.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.fullName || v.username} ({v.township || "No Township"}) {v.phoneNumber ? `· 📞 ${v.phoneNumber}` : ""}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleManualAssign}
+                disabled={!selectedVolunteerId || actionLoading !== null}
+                className="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer border border-slate-700"
+              >
+                {actionLoading === `assign-${assignModalItem}` ? "Assigning..." : "✔ Assign Selected Volunteer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

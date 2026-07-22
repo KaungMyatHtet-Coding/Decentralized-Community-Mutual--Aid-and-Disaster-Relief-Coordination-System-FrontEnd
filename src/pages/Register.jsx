@@ -1,18 +1,34 @@
 import {useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import api from "../api";
 
 function Register() {
+  const YANGON_TOWNSHIPS = [
+    "Ahlon (အလုံ)", "Bahan (ဗဟန်း)", "Botataung (ဗိုလ်တထောင်)", "Dagon (ဒဂုံ)",
+    "Dagon Seikkan (ဒဂုံဆိပ်ကမ်း)", "Dawbon (ဒေါပုံ)", "East Dagon (ဒဂုံအရှေ့ပိုင်း)",
+    "Hlaing (လှိုင်)", "Hlaingthaya (လှိုင်သာယာ)", "Insein (အင်းစိန်)",
+    "Kamayut (ကမာရွတ်)", "Kyauktada (ကျောက်တံတား)", "Kyimyindaing (ကြည့်မြင်တိုင်)",
+    "Lanmadaw (လမ်းမတော်)", "Latha (လသာ)", "Mayangon (မရမ်းကုန်း)",
+    "Mingala Taungnyunt (မင်္ဂလာတောင်ညွန့်)", "Mingaladon (မင်္ဂလာဒုံ)",
+    "North Dagon (ဒဂုံမြောက်ပိုင်း)", "North Okkalapa (မြောက်ဥက္ကလာပ)",
+    "Pabedan (ပန်းဘဲတန်း)", "Pazundaung (ပုဇွန်တောင်)", "Sanchaung (စမ်းချောင်း)",
+    "Seikkan (ဆိပ်ကမ်း)", "Shwepyitha (ရွှေပြည်သာ)", "South Dagon (ဒဂုံတောင်ပိုင်း)",
+    "South Okkalapa (တောင်ဥက္ကလာပ)", "Tamwe (တာမွေ)", "Thaketa (သာကေတ)",
+    "Thingangyun (သင်္ဃန်းကျွန်း)", "Yankin (ရန်ကင်း)"
+  ];
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     phoneNumber: "",
+    township: "",
   });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) =>
@@ -22,13 +38,29 @@ function Register() {
     e.preventDefault();
     setMessage("");
     setError("");
+
+    // --- Validations ---
+    const phoneRegex = /^(09)?\d{9}$/;
+    if (formData.phoneNumber && !phoneRegex.test(formData.phoneNumber)) {
+      setError("Phone number must be valid (e.g., 09123456789 or 123456789).");
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      setError("Password must be at least 8 characters, include an uppercase letter, a number, and a special character.");
+      return;
+    }
+
     setLoading(true);
     try {
       await api.post("/users/register", formData);
       setMessage("🎉 Registration successful! Redirecting to login...");
       setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed!");
+      const errorData = err.response?.data;
+      const errorMessage = typeof errorData === "string" ? errorData : (errorData?.message || "Registration failed!");
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -105,16 +137,44 @@ function Register() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                Township (မြို့နယ်) <span className="text-rose-500">*</span>
+              </label>
+              <select
+                name="township"
+                onChange={handleChange}
+                value={formData.township}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl p-2.5 text-sm text-white focus:outline-none transition cursor-pointer appearance-none"
+                required
+              >
+                <option value="" disabled>Select your township</option>
+                {YANGON_TOWNSHIPS.map((township) => (
+                  <option key={township} value={township.split(" (")[0]}>
+                    {township}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
                 Password
               </label>
-              <input
-                type="password"
-                name="password"
-                onChange={handleChange}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl p-2.5 text-sm text-white focus:outline-none transition"
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  onChange={handleChange}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-teal-500 rounded-xl p-2.5 text-sm text-white focus:outline-none transition pr-10"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-teal-400 transition"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button

@@ -12,6 +12,9 @@ import DonationApprovals from "./pages/admin/DonationApprovals";
 import ManageUsers from "./pages/admin/ManageUsers";
 import VolunteerApplications from "./pages/admin/VolunteerApplications";
 import VolunteerList from "./pages/admin/VolunteerList";
+import VolunteerAidRequests from "./pages/VolunteerAidRequests";
+import VolunteerDeliveryReport from "./pages/VolunteerDeliveryReport";
+import AdminDeliveryReviews from "./pages/admin/AdminDeliveryReviews";
 import AidRequests from "./pages/AidRequests";
 import Campaigns from "./pages/Campaigns";
 import Dashboard from "./pages/Dashboard";
@@ -32,8 +35,9 @@ import VolunteerHistory from "./pages/VolunteerHistory";
 import AdminDonationApprovals from "./pages/AdminDonationApprovals";
 import StorePage from "./pages/admin/StorePage";
 import StockDetails from "./pages/admin/StockDetailspage";
-// ... အပေါ်က Import တွေ အားလုံးကို မူလအတိုင်း ထားပါ ...
 import HomePage from "./pages/HomePage";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -43,6 +47,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/campaigns" element={<Campaigns />} />
         <Route path="/donate/:campaignId" element={<DonateForm />} />
@@ -81,7 +87,10 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/view" element={<ProfileViewPage />} />
         <Route path="/volunteer/history" element={<VolunteerHistory />} />
-        // ညီလေးရဲ့ Admin Router Area ထဲမှာ သွားထည့်ပေးပါ
+        <Route path="/volunteer/aid-tasks" element={<VolunteerAidRequests />} />
+        <Route path="/volunteer/delivery-report/:aidRequestId" element={<VolunteerDeliveryReport />} />
+        <Route path="/admin/delivery-reviews" element={<AdminDeliveryReviews />} />
+        // ADMIN ညီလေးရဲ့ Admin Router Area ထဲမှာ သွားထည့်ပေးပါ
         <Route path="/admin/store" element={<StorePage />} />
         <Route path="/admin/stock-details" element={<StockDetails />} />
       </Routes>

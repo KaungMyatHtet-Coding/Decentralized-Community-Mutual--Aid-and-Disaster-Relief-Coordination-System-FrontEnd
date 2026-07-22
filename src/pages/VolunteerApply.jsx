@@ -9,6 +9,7 @@ function VolunteerApply() {
   const navigate = useNavigate();
   const { lang } = useLanguage();
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -23,6 +24,26 @@ function VolunteerApply() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await api.post("/upload/photo", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setForm({ ...form, proofImageUrl: res.data.url });
+    } catch (err) {
+      setError(lang === "en" ? "Failed to upload image." : "ဓာတ်ပုံတင်ခြင်း မအောင်မြင်ပါ။");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -168,19 +189,33 @@ function VolunteerApply() {
           {/* Proof Image */}
           <div>
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block">
-              {lang === "en" ? "ID / Proof Image URL" : "မှတ်ပုံတင် / အထောက်အထား ဓာတ်ပုံ URL"}
+              {lang === "en" ? "ID / Proof Image *" : "မှတ်ပုံတင် / အထောက်အထား ဓာတ်ပုံ *"}
             </label>
-            <input
-              type="text"
-              name="proofImageUrl"
-              required
-              placeholder={lang === "en" ? "Paste your ID card or proof image URL" : "မှတ်ပုံတင် (သို့) အထောက်အထား ဓာတ်ပုံလင့်ခ်ကို ထည့်ပါ"}
-              value={form.proofImageUrl}
-              onChange={handleChange}
-              className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl p-3 text-sm text-white focus:outline-none font-mono text-xs"
-            />
+            <div className="mt-1 flex items-center gap-4">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 transition cursor-pointer"
+              />
+              {uploading && <span className="text-xs text-blue-400 animate-pulse">{lang === "en" ? "Uploading..." : "တင်နေပါသည်..."}</span>}
+            </div>
+            {form.proofImageUrl && (
+              <div className="mt-3 relative w-full h-40 rounded-xl overflow-hidden border border-slate-700">
+                <img src={form.proofImageUrl} alt="ID Preview" className="w-full h-full object-cover" />
+                <button 
+                  type="button"
+                  onClick={() => setForm({...form, proofImageUrl: ""})}
+                  className="absolute top-2 right-2 bg-rose-500/80 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-rose-500 transition"
+                  title="Remove Image"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <p className="text-[10px] text-gray-500 mt-1">
-              * {lang === "en" ? "NRC card or any government ID image URL" : "နိုင်ငံသားစိစစ်ရေးကတ် (သို့) အစိုးရအသိအမှတ်ပြု ကတ်တစ်ခုခု"}
+              * {lang === "en" ? "NRC card or any government ID image" : "နိုင်ငံသားစိစစ်ရေးကတ် (သို့) အစိုးရအသိအမှတ်ပြု ကတ်တစ်ခုခု"}
             </p>
           </div>
 

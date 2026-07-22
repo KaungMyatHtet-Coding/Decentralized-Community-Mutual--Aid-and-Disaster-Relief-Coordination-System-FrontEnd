@@ -254,11 +254,16 @@ function ManageUsers() {
                       <td className="p-4">
                         <button 
                           onClick={() => setSelectedUser(u)}
-                          className="font-bold text-white hover:text-purple-400 cursor-pointer text-left transition-colors"
+                          className="font-bold text-white hover:text-purple-400 cursor-pointer text-left transition-colors flex items-center gap-2"
                         >
                           {u.username}
+                          {u.isActive === false && (
+                            <span className="px-2 py-0.5 bg-rose-500/20 text-rose-500 border border-rose-500/50 rounded-md text-[9px] uppercase tracking-wider font-bold">
+                              Banned
+                            </span>
+                          )}
                           {String(u.id) === String(currentUserId) && (
-                            <span className="ml-1.5 text-[9px] text-teal-400 font-mono">
+                            <span className="text-[9px] text-teal-400 font-mono">
                               (you)
                             </span>
                           )}
@@ -270,7 +275,7 @@ function ManageUsers() {
                       </td>
                       <td className="p-4">
                         {/* Role change dropdown */}
-                        {String(u.id) !== String(currentUserId) ? (
+                        {String(u.id) !== String(currentUserId) && u.isActive !== false ? (
                           <select
                             value={u.role}
                             onChange={(e) =>
@@ -314,15 +319,19 @@ function ManageUsers() {
                       </td>
                       <td className="p-4 text-center">
                         {String(u.id) !== String(currentUserId) ? (
-                          <button
-                            onClick={() => handleDelete(u.id, u.username)}
-                            disabled={actionLoading === `delete-${u.id}`}
-                            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer disabled:opacity-40"
-                          >
-                            {actionLoading === `delete-${u.id}`
-                              ? "..."
-                              : "🗑️ Delete"}
-                          </button>
+                          u.isActive === false ? (
+                            <span className="text-gray-600 text-[10px] font-mono">BANNED</span>
+                          ) : (
+                            <button
+                              onClick={() => handleDelete(u.id, u.username)}
+                              disabled={actionLoading === `delete-${u.id}`}
+                              className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold py-1.5 px-3 rounded-lg text-[10px] transition cursor-pointer disabled:opacity-40"
+                            >
+                              {actionLoading === `delete-${u.id}`
+                                ? "..."
+                                : "🗑️ Ban User"}
+                            </button>
+                          )
                         ) : (
                           <span className="text-gray-700 text-[10px]">—</span>
                         )}

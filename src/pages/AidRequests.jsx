@@ -3,7 +3,15 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 
 const CATEGORIES = ["ALL", "FOOD", "MEDICINE", "WATER", "CLOTHING", "SHELTER", "OTHER"];
-const TOWNSHIPS = ["ALL", "Yangon", "Mandalay", "Naypyidaw", "Bago", "Mawlamyine", "Other"];
+const myanmarTownships = [
+  "Ahlon", "Bahan", "Dagon", "Hlaing", "Insein", "Kamayut", "Kyauktada",
+  "Kyimyindaing", "Lanmadaw", "Latha", "Mayangon", "Mingaladon", "Pabedan",
+  "Pazundaung", "Sanchaung", "Tamwe", "Thaketa", "Thingangyun", "Yankin",
+  "South Dagon", "North Dagon", "East Dagon", "Dagon Seikkan", "Dawbon",
+  "Hlaingthaya", "Shwepyitha", "North Okkalapa", "South Okkalapa", "Botahtaung",
+  "Seikkan", "Seikkyi Kanaungto"
+];
+const TOWNSHIPS = ["ALL", ...myanmarTownships, "Other"];
 
 function AidRequests() {
   const navigate = useNavigate();
@@ -14,8 +22,8 @@ function AidRequests() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedTownship, setSelectedTownship] = useState("ALL");
   const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
   const role = localStorage.getItem("role") || "";
 
   // ✅ categories is now an array
@@ -26,6 +34,8 @@ function AidRequests() {
     township: "",
     wardOrVillage: "",
     contactPhone: "",
+    proofPhotoUrl: "",
+    items: [{ itemName: "", quantity: 1, unit: "pcs" }],
   });
 
   useEffect(() => {
@@ -54,9 +64,52 @@ function AidRequests() {
     }));
   };
 
+  const handleAddItem = () => {
+    setForm((prev) => ({
+      ...prev,
+      items: [...prev.items, { itemName: "", quantity: 1, unit: "pcs" }],
+    }));
+  };
+
+  const handleRemoveItem = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleItemChange = (index, field, value) => {
+    setForm((prev) => {
+      const updated = [...prev.items];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, items: updated };
+    });
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await api.post("/upload/photo", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setForm({ ...form, proofPhotoUrl: res.data.url });
+      setMessage("✅ Image uploaded successfully!");
+    } catch (err) {
+      setError("Failed to upload image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!form.title || !form.description || !form.township || !form.wardOrVillage || !form.contactPhone) {
-      setError("Please fill all fields.");
+    if (!form.title || !form.description || !form.township || !form.wardOrVillage || !form.contactPhone || !form.proofPhotoUrl) {
+      setError("Please fill all fields and upload a proof photo.");
       return;
     }
     // ✅ validate at least one category selected
@@ -66,10 +119,21 @@ function AidRequests() {
     }
     setSubmitting(true);
     try {
-      await api.post("/aid-requests", form);
+      const cleanedItems = form.items.filter((it) => it.itemName.trim() !== "");
+      const payload = { ...form, items: cleanedItems };
+      await api.post("/aid-requests", payload);
       setMessage("✅ Aid request submitted! Admin will review it.");
       setShowForm(false);
-      setForm({ title: "", description: "", categories: [], township: "", wardOrVillage: "", contactPhone: "" });
+      setForm({
+        title: "",
+        description: "",
+        categories: [],
+        township: "",
+        wardOrVillage: "",
+        contactPhone: "",
+        proofPhotoUrl: "",
+        items: [{ itemName: "", quantity: 1, unit: "pcs" }],
+      });
       fetchRequests();
       setTimeout(() => setMessage(""), 4000);
     } catch (err) {
@@ -150,7 +214,7 @@ function AidRequests() {
             <h2 className="text-base font-bold text-emerald-400">📝 New Aid Request</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Title</label>
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Title / ခေါင်းစဉ် *</label>
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -159,7 +223,7 @@ function AidRequests() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Description</label>
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Description / အခြေအနေအသေးစိတ် *</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -169,10 +233,68 @@ function AidRequests() {
                 />
               </div>
 
+              {/* 📦 Items List (Quantity & Unit Specification) */}
+              <div className="sm:col-span-2 bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-teal-400 uppercase tracking-wider">
+                    📦 Needed Items & Quantities / လိုအပ်သော ပစ္စည်းနှင့် ပမာဏ
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="text-xs bg-teal-500/10 text-teal-400 border border-teal-500/20 px-3 py-1 rounded-lg font-semibold hover:bg-teal-500/20 transition cursor-pointer"
+                  >
+                    + Add Item
+                  </button>
+                </div>
+
+                {form.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <input
+                      type="text"
+                      placeholder="Item Name (e.g. Rice, Drinking Water)"
+                      value={item.itemName}
+                      onChange={(e) => handleItemChange(idx, "itemName", e.target.value)}
+                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-500 focus:outline-none min-w-[140px]"
+                    />
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="any"
+                      placeholder="Qty"
+                      value={item.quantity}
+                      onChange={(e) => handleItemChange(idx, "quantity", parseFloat(e.target.value) || 0)}
+                      className="w-20 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-500 focus:outline-none"
+                    />
+                    <select
+                      value={item.unit}
+                      onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
+                      className="w-28 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-500 focus:outline-none"
+                    >
+                      <option value="pcs">pcs (ခု)</option>
+                      <option value="kg">kg (ကီလို)</option>
+                      <option value="bottles">bottles (ပုလင်း)</option>
+                      <option value="packets">packets (ထုပ်)</option>
+                      <option value="meals">meals (နပ်)</option>
+                      <option value="boxes">boxes (ဖာ)</option>
+                    </select>
+                    {form.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(idx)}
+                        className="text-rose-400 hover:text-rose-300 text-xs px-2 py-2 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               {/* ✅ Multi-select category checkboxes */}
               <div className="sm:col-span-2">
                 <label className="text-xs text-gray-400 uppercase tracking-wider">
-                  Category <span className="text-emerald-500">(select all that apply)</span>
+                  Category / အမျိုးအစား <span className="text-emerald-500">(select all that apply)</span>
                 </label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {["FOOD","MEDICINE","WATER","CLOTHING","SHELTER","OTHER"].map((cat) => {
@@ -199,16 +321,18 @@ function AidRequests() {
               </div>
 
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Township</label>
-                <input
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Township / မြို့နယ် *</label>
+                <select
                   value={form.township}
                   onChange={(e) => setForm({ ...form, township: e.target.value })}
-                  placeholder="e.g. Yangon"
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
-                />
+                >
+                  <option value="">Select Township</option>
+                  {myanmarTownships.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
               </div>
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Ward / Village</label>
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Ward / Village / ရပ်ကွက် သို့မဟုတ် ကျေးရွာ *</label>
                 <input
                   value={form.wardOrVillage}
                   onChange={(e) => setForm({ ...form, wardOrVillage: e.target.value })}
@@ -216,14 +340,40 @@ function AidRequests() {
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider">Contact Phone</label>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Contact Phone / ဆက်သွယ်ရန်ဖုန်း *</label>
                 <input
                   value={form.contactPhone}
                   onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
                   placeholder="e.g. 09-123456789"
                   className="w-full mt-1 bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
                 />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-400 uppercase tracking-wider">Proof Photo / အခြေအနေ ဓာတ်ပုံ *</label>
+                <div className="mt-1 flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 transition cursor-pointer"
+                  />
+                  {uploading && <span className="text-xs text-emerald-400 animate-pulse">Uploading...</span>}
+                </div>
+                {form.proofPhotoUrl && (
+                  <div className="mt-3 relative w-full h-40 rounded-xl overflow-hidden border border-slate-700">
+                    <img src={form.proofPhotoUrl} alt="Proof" className="w-full h-full object-cover" />
+                    <button 
+                      type="button"
+                      onClick={() => setForm({...form, proofPhotoUrl: ""})}
+                      className="absolute top-2 right-2 bg-rose-500/80 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-rose-500 transition cursor-pointer"
+                      title="Remove Image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <button

@@ -128,6 +128,17 @@ const ACTION_CARDS_CONFIG = [
     superAdminOnly: false,
   },
   {
+    key: "deliveryReviews",
+    icon: CheckCircle,
+    titleKey: "deliveryReviewsTitle",
+    descKey: "deliveryReviewsDesc",
+    colorClass: "text-teal-500",
+    bgClass: "bg-teal-100 dark:bg-teal-500/10",
+    borderClass: "border-teal-200 dark:border-teal-500/20",
+    route: "/admin/delivery-reviews",
+    superAdminOnly: false,
+  },
+  {
     key: "store",
     icon: Home, // Store icon alternative
     titleKey: "storeInventoryTitle",
@@ -171,6 +182,7 @@ export default function AdminDashboard() {
   const [role, setRole] = useState("");
   const [township, setTownship] = useState("");
   const [stats, setStats] = useState(null);
+  const [stockCounts, setStockCounts] = useState({ MEDICINE: 0, FOOD: 0, WATER: 0, CLOTHING: 0, OTHERS: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
   const [counterStarted, setCounterStarted] = useState(false);
 
@@ -194,8 +206,24 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
       try {
-        const res = await api.get("/admin/stats");
-        setStats(res.data);
+        const [statsRes, storedRes] = await Promise.all([
+          api.get("/admin/stats"),
+          api.get("/item-donations/admin/stored").catch(() => ({ data: [] }))
+        ]);
+        setStats(statsRes.data);
+
+        // Calculate live stock by 5 categories
+        const counts = { MEDICINE: 0, FOOD: 0, WATER: 0, CLOTHING: 0, OTHERS: 0 };
+        (storedRes.data || []).forEach(item => {
+          const lower = (item.itemName || "").toLowerCase();
+          const qty = item.quantity || 0;
+          if (lower.includes("med") || lower.includes("ဆေး") || lower.includes("paracetamol")) counts.MEDICINE += qty;
+          else if (lower.includes("food") || lower.includes("rice") || lower.includes("ဆန်") || lower.includes("oil")) counts.FOOD += qty;
+          else if (lower.includes("water") || lower.includes("ရေ")) counts.WATER += qty;
+          else if (lower.includes("cloth") || lower.includes("အဝတ်") || lower.includes("blanket") || lower.includes("စောင်")) counts.CLOTHING += qty;
+          else counts.OTHERS += qty;
+        });
+        setStockCounts(counts);
       } catch (err) {
         console.error("Stats fetch failed:", err);
       } finally {
@@ -384,6 +412,61 @@ export default function AdminDashboard() {
                 />
               </>
             )}
+          </div>
+        </div>
+
+        {/* 📦 Live Warehouse Stock Inventory (5 Category Cards) */}
+        <div>
+          <h3 className="text-lg font-bold mb-4 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-emerald-500" />
+              <span>📦 Live Warehouse Inventory (Stock By Category)</span>
+            </span>
+            <span className="text-xs font-normal text-slate-400">
+              Township: <strong className="text-white">{township || "All Regions"}</strong>
+            </span>
+          </h3>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="bg-white dark:bg-slate-900/50 backdrop-blur border border-blue-500/20 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-blue-500/40 transition">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-2xl">💊</span>
+                <span className="text-xl font-black text-blue-500">{stockCounts.MEDICINE}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Medicine / ဆေးဝါး</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900/50 backdrop-blur border border-amber-500/20 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-amber-500/40 transition">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-2xl">🍚</span>
+                <span className="text-xl font-black text-amber-500">{stockCounts.FOOD}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Food / စားနပ်ရိက္ခာ</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900/50 backdrop-blur border border-cyan-500/20 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-cyan-500/40 transition">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-2xl">💧</span>
+                <span className="text-xl font-black text-cyan-500">{stockCounts.WATER}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Water / သောက်ရေသန့်</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900/50 backdrop-blur border border-emerald-500/20 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-emerald-500/40 transition">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-2xl">🧥</span>
+                <span className="text-xl font-black text-emerald-500">{stockCounts.CLOTHING}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Clothing / အဝတ်အထည်</p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900/50 backdrop-blur border border-purple-500/20 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:border-purple-500/40 transition">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-2xl">📦</span>
+                <span className="text-xl font-black text-purple-500">{stockCounts.OTHERS}</span>
+              </div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Others / အခြား</p>
+            </div>
           </div>
         </div>
 

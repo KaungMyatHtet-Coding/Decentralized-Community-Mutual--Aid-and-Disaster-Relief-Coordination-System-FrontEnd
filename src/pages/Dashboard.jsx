@@ -340,10 +340,13 @@ export default function Dashboard() {
                 <Shield className="w-5 h-5 text-blue-500" /> {t("volunteerCenter")}
               </h4>
               {role.includes("VOLUNTEER") ? (
-                <div className="relative z-10">
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">{t("volunteerActiveDesc")}</p>
+                <div className="relative z-10 flex flex-col gap-2">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">{t("volunteerActiveDesc")}</p>
                   <button onClick={() => navigate("/volunteer/assignments")} className="w-full py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-semibold transition shadow-md shadow-blue-500/20">
                     {t("viewAssignments")}
+                  </button>
+                  <button onClick={() => navigate("/volunteer/aid-tasks")} className="w-full py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-semibold transition shadow-md shadow-teal-500/20">
+                    Aid Request Tasks
                   </button>
                 </div>
               ) : (
